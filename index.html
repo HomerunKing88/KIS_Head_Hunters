@@ -16,7 +16,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16.5px}
-body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
+body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;overflow-x:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,select{font-family:inherit;font-size:.93rem;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:#fff;color:var(--text)}
 input:focus,select:focus{outline:2px solid var(--sky);outline-offset:1px;border-color:var(--sky)}
@@ -122,7 +122,7 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 .basis{font-size:.78rem;color:var(--sub)}
 
 /* ---------- 결과 테이블 ---------- */
-.table-wrap{overflow:auto;max-height:72vh}
+.table-wrap{overflow:auto;max-height:72vh;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 table{width:100%;border-collapse:collapse;font-size:.9rem;table-layout:auto}
 thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.82rem;letter-spacing:.02em;text-align:center;padding:10px 11px;white-space:nowrap;user-select:none;z-index:5}
 thead th.sortable{cursor:pointer}
