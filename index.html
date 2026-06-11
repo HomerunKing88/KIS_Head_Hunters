@@ -80,6 +80,8 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 .btn.solid:hover{background:var(--ink2)}
 .btn.solid:disabled{background:var(--gray);border-color:var(--gray);cursor:not-allowed}
 .btn.sm{font-size:.78rem;padding:5px 11px}
+#viewToggle{background:var(--sky-soft);border-color:#C6DFF6;color:var(--ink);font-weight:700}
+#viewToggle:hover{background:var(--sky);border-color:var(--sky);color:#fff}
 
 /* ---------- 진행 표시 ---------- */
 #progress{display:none;align-items:center;gap:12px;margin-top:14px;font-size:.92rem;color:var(--ink);font-weight:600}
@@ -163,13 +165,12 @@ tr.main.open .exp::after{content:"접기"}
 table.full{min-width:1180px}
 table.full .col-birth,table.full .col-tenure,table.full .col-reg,table.full .col-edu,table.full .col-chrg,table.full .col-career,table.full .col-hffc,table.full .col-news{display:table-cell}
 /* full 모드: 상세·이름 칼럼 좌측 고정(가로 스크롤 시 따라옴) */
-table.full .col-exp{min-width:64px;max-width:64px;width:64px}
+table.full .col-exp{display:none}                 /* 한눈에 보기: 상세 버튼 숨김 */
 table.full .col-nm{min-width:80px}
-table.full td.col-exp,table.full th.col-exp{position:sticky;left:0}
-table.full td.col-nm,table.full th.col-nm{position:sticky;left:64px}
-table.full td.col-exp,table.full td.col-nm{background:#fff;z-index:4}
-table.full thead th.col-exp,table.full thead th.col-nm{z-index:7}
-table.full tr.main:hover td.col-exp,table.full tr.main:hover td.col-nm{background:var(--sky-soft)}
+table.full td.col-nm,table.full th.col-nm{position:sticky;left:0}
+table.full td.col-nm{background:#fff;z-index:4}
+table.full thead th.col-nm{z-index:7}
+table.full tr.main:hover td.col-nm{background:var(--sky-soft)}
 /* 사용자가 직접 끈 칼럼(체크 해제)은 full 모드에서도 계속 숨김 */
 table.hide-chrg .col-chrg{display:none}
 table.hide-career .col-career{display:none}
