@@ -162,6 +162,7 @@ tr.detail td{padding:14px 16px 16px 38px;border-bottom:2px solid var(--line)}
 .move-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
 .move-list span{font-size:.76rem;background:var(--purple-soft);color:var(--purple);border-radius:6px;padding:2px 8px}
 .empty{padding:46px 20px;text-align:center;color:var(--sub);font-size:.9rem}
+mark.hl{background:#FFF1A8;color:inherit;padding:0 1px;border-radius:2px}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--gray-soft);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -257,8 +258,8 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
     </div>
     <div class="card-body">
       <div class="filter-grid">
-        <div class="f-group"><span class="lbl">포함 키워드 (직위·담당·경력, 쉼표=OR)</span><input id="fInc" placeholder="예: IB, 리스크, CFO" /></div>
-        <div class="f-group"><span class="lbl">제외 키워드 (쉼표 구분)</span><input id="fExc" placeholder="예: 고문, 자문" /></div>
+        <div class="f-group"><span class="lbl">포함 키워드 (직위·담당업무·주요경력 검색, 쉼표=OR)</span><input id="fInc" placeholder="예: IB, 리스크, CFO" /></div>
+        <div class="f-group"><span class="lbl">제외 키워드 (같은 범위에서 제외, 쉼표 구분)</span><input id="fExc" placeholder="예: 고문, 자문" /></div>
         <div class="f-group"><span class="lbl">출생연도 범위 (= 나이 환산)</span>
           <div class="row" style="gap:6px;flex-wrap:nowrap"><input id="fBirthFrom" placeholder="1960" inputmode="numeric" /><span>~</span><input id="fBirthTo" placeholder="1979" inputmode="numeric" /></div>
         </div>
@@ -991,7 +992,7 @@ function eduParts(p){
 }
 
 function filtered(){
-  const inc = kwList($("fInc").value), exc = kwList($("fExc").value);
+  const inc = kwList($("fInc").value).map(s => s.toLowerCase()), exc = kwList($("fExc").value).map(s => s.toLowerCase());
   const bf = +$("fBirthFrom").value || null, bt = +$("fBirthTo").value || null;
   const st = $("fStatus").value;
   const exOut = $("exOutside").checked, exAud = $("exAuditor").checked;
@@ -999,7 +1000,7 @@ function filtered(){
   const onlySig = $("onlySignal").checked, onlyMv = $("onlyMove").checked;
 
   return people.filter(p => {
-    const t = personText(p);
+    const t = personText(p).toLowerCase();
     if(exOut && /사외/.test(p.ofcps)) return false;
     if(exAud && /감사/.test(p.ofcps)) return false;
     if(inc.length && !inc.some(k => t.includes(k))) return false;
@@ -1090,22 +1091,22 @@ function render(){
     const isOpen = expanded.has(k);
     const q = encodeURIComponent(`${p.nm} ${shortCorp(p.corp_name)}`);
     const others = mv.corps.filter(c => c.name !== p.corp_name);
-    const eduHtml = eduParts(p).map(e => `<div class="ln">${esc(e)}</div>`).join("");
+    const eduHtml = eduParts(p).map(e => `<div class="ln">${highlight(e)}</div>`).join("");
     const main = `<tr class="main${isOpen?" open":""}" data-k="${esc(k)}">
       <td><span class="exp">▶</span></td>
       <td class="nm"><b>${esc(p.nm)}</b></td>
       <td class="num">${esc(fmtBirth(p))}</td>
       <td class="num">${age!=null ? age : ""}</td>
       <td class="corp">${esc(p.corp_name)}</td>
-      <td>${esc(p.ofcps)}</td>
+      <td>${highlight(p.ofcps)}</td>
       <td>${p.status==="active" ? `<span class="badge b-active">재직</span>` : `<span class="badge b-left">퇴임 추정</span>`}
           ${sig ? `<span class="badge b-signal">${sig}</span>` : ""}
           ${mv.moved ? `<span class="badge b-move">이동 ${mv.corps.length}사</span>` : ""}</td>
       <td class="num">${esc(fmtTenureShort(p))}</td>
       <td>${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
       <td class="edu col-edu">${eduHtml}</td>
-      <td class="career col-chrg">${esc(p.chrg_job)}</td>
-      <td class="career col-career">${esc(p.main_career)}</td>
+      <td class="career col-chrg">${highlight(p.chrg_job)}</td>
+      <td class="career col-career">${highlight(p.main_career)}</td>
       <td class="num">${esc(p.hffc_pd)}</td>
       <td class="news">
         <a href="https://search.naver.com/search.naver?where=news&query=${q}" target="_blank" rel="noopener">네이버</a>
@@ -1114,9 +1115,9 @@ function render(){
     </tr>`;
     const detail = `<tr class="detail${isOpen?" open":""}" data-detail="${esc(k)}"><td colspan="14">
       <div class="dgrid">
-        <div><div class="dk">학력(추정)</div><div class="dv">${esc(eduOf(p))||"—"}</div></div>
-        <div><div class="dk">담당업무</div><div class="dv">${esc(p.chrg_job)||"—"}</div></div>
-        <div><div class="dk">주요경력</div><div class="dv">${esc(p.main_career)||"—"}</div></div>
+        <div><div class="dk">학력(추정)</div><div class="dv">${highlight(eduOf(p))||"—"}</div></div>
+        <div><div class="dk">담당업무</div><div class="dv">${highlight(p.chrg_job)||"—"}</div></div>
+        <div><div class="dk">주요경력</div><div class="dv">${highlight(p.main_career)||"—"}</div></div>
         <div><div class="dk">재직기간</div><div class="dv">${esc(p.hffc_pd)||"—"}</div></div>
         <div><div class="dk">임기만료</div><div class="dv">${esc(p.tenure_end_on)||"—"}</div></div>
         <div><div class="dk">출처 보고서 / 최초 확인</div><div class="dv">${esc(fmtReport(p.srcReport))} / ${esc(fmtReport(p.firstSeen))}</div></div>
@@ -1150,6 +1151,15 @@ $("clearRes").onclick = () => {
 
 function shortCorp(n){ return n.replace(/주식회사|\(주\)|㈜/g,"").replace(/(생명보험|화재해상보험|손해보험)$/,m=>({"생명보험":"생명","화재해상보험":"화재","손해보험":"손보"}[m])).trim(); }
 function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+/* 포함 키워드를 결과 텍스트에서 노란색으로 강조 (대소문자 무시) */
+function highlight(text){
+  const safe = esc(text);
+  const kws = kwList($("fInc").value).map(k => k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).filter(Boolean);
+  if(!kws.length) return safe;
+  try{ return safe.replace(new RegExp("(" + kws.join("|") + ")", "gi"), '<mark class="hl">$1</mark>'); }
+  catch(e){ return safe; }
+}
 
 /* 정렬 (클릭 + 키보드 Enter/Space) */
 function doSort(k){
