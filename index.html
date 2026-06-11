@@ -120,14 +120,14 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 
 /* ---------- 결과 테이블 ---------- */
 .table-wrap{overflow:auto;max-height:72vh}
-table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:1120px}
+table{width:100%;border-collapse:collapse;font-size:.9rem;table-layout:auto}
 thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.82rem;letter-spacing:.02em;text-align:center;padding:10px 11px;white-space:nowrap;user-select:none;z-index:5}
 thead th.sortable{cursor:pointer}
 thead th.sortable:hover{background:var(--ink2)}
 thead th:focus-visible{outline:2px solid var(--sky);outline-offset:-2px}
 thead th .arrow{opacity:.55;font-size:.68rem;margin-left:3px}
 thead th.sorted .arrow{opacity:1;color:var(--sky)}
-tbody td{padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;overflow:hidden}
 tbody tr.main:hover{background:var(--sky-soft)}
 tbody tr.main{cursor:pointer}
 td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -142,8 +142,15 @@ tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
 .b-move{background:var(--purple-soft);color:var(--purple)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.b-signal::before{animation:none}}
-.cell{max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.86rem;color:var(--sub)}
-.col-edu .cell{max-width:220px;color:var(--text);font-weight:600}
+.cell{max-width:230px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.85rem;color:var(--sub)}
+.col-edu .cell{max-width:160px;color:var(--text);font-weight:600}
+.col-chrg .cell{max-width:150px}
+.col-career .cell{max-width:230px}
+.cell-corp{max-width:150px;color:var(--text);font-weight:500}
+/* 화면이 좁아지면 우선순위 낮은 칼럼부터 숨김 (내용은 행 클릭 시 펼침에서 확인) */
+@media (max-width:1180px){ .col-career{display:none} }
+@media (max-width:980px){ .col-chrg{display:none} }
+@media (max-width:760px){ .col-birth,.col-tenure,.col-reg,.col-edu,.col-hffc,.col-news{display:none} }
 .news a{display:inline-block;font-size:.74rem;font-weight:700;color:var(--ink);background:var(--sky-soft);border:1px solid #C6DFF6;border-radius:6px;padding:3px 8px;text-decoration:none;margin:1px 2px 1px 0}
 .news a:hover{background:var(--sky);color:#fff}
 /* 컬럼 표시 토글 */
@@ -300,18 +307,18 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
         <thead><tr>
           <th class="col-exp" aria-hidden="true"></th>
           <th class="sortable" data-k="nm" tabindex="0">이름<span class="arrow">↕</span></th>
-          <th class="sortable" data-k="birth_ym" tabindex="0">생년월<span class="arrow">↕</span></th>
+          <th class="sortable col-birth" data-k="birth_ym" tabindex="0">생년월<span class="arrow">↕</span></th>
           <th class="sortable" data-k="age" tabindex="0">나이<span class="arrow">↕</span></th>
           <th class="sortable" data-k="corp_name" tabindex="0">회사<span class="arrow">↕</span></th>
           <th class="sortable" data-k="ofcps" tabindex="0">직위<span class="arrow">↕</span></th>
           <th class="sortable" data-k="status" tabindex="0">상태<span class="arrow">↕</span></th>
-          <th class="sortable" data-k="tenure_end_on" tabindex="0">임기만료<span class="arrow">↕</span></th>
-          <th>등기/상근</th>
+          <th class="sortable col-tenure" data-k="tenure_end_on" tabindex="0">임기만료<span class="arrow">↕</span></th>
+          <th class="col-reg">등기/상근</th>
           <th class="col-edu" title="주요경력에서 추출한 추정 학력">학력</th>
           <th class="col-chrg">담당업무</th>
           <th class="col-career">주요경력</th>
-          <th>재직기간</th>
-          <th>뉴스</th>
+          <th class="col-hffc">재직기간</th>
+          <th class="col-news">뉴스</th>
         </tr></thead>
         <tbody id="resBody"></tbody>
       </table>
@@ -1100,33 +1107,38 @@ function render(){
     const main = `<tr class="main${isOpen?" open":""}" data-k="${esc(k)}">
       <td><span class="exp">▶</span></td>
       <td class="nm"><b>${esc(p.nm)}</b></td>
-      <td class="num">${esc(fmtBirth(p))}</td>
+      <td class="num col-birth">${esc(fmtBirth(p))}</td>
       <td class="num">${age!=null ? age : ""}</td>
-      <td class="corp">${esc(p.corp_name)}</td>
+      <td class="corp"><div class="cell cell-corp">${esc(p.corp_name)}</div></td>
       <td>${highlight(p.ofcps)}</td>
       <td>${p.status==="active" ? `<span class="badge b-active">재직</span>` : `<span class="badge b-left">퇴임 추정</span>`}
           ${sig ? `<span class="badge b-signal">${sig}</span>` : ""}
           ${mv.moved ? `<span class="badge b-move">이동 ${mv.corps.length}사</span>` : ""}</td>
-      <td class="num">${esc(fmtTenureShort(p))}</td>
-      <td>${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
+      <td class="num col-tenure">${esc(fmtTenureShort(p))}</td>
+      <td class="col-reg">${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
       <td class="col-edu"><div class="cell">${highlight(eduOf(p))}</div></td>
       <td class="col-chrg"><div class="cell">${highlight(p.chrg_job)}</div></td>
       <td class="col-career"><div class="cell">${highlight(p.main_career)}</div></td>
-      <td class="num">${esc(p.hffc_pd)}</td>
-      <td class="news">
+      <td class="num col-hffc">${esc(p.hffc_pd)}</td>
+      <td class="news col-news">
         <a href="https://search.naver.com/search.naver?where=news&query=${q}" target="_blank" rel="noopener">네이버</a>
         <a href="https://www.google.com/search?q=${q}&tbm=nws" target="_blank" rel="noopener">구글</a>
       </td>
     </tr>`;
     const detail = `<tr class="detail${isOpen?" open":""}" data-detail="${esc(k)}"><td colspan="14">
       <div class="dgrid">
+        <div><div class="dk">생년월 / 나이</div><div class="dv">${esc(p.birth_ym)||"—"}${age!=null?` (${age}세)`:""}</div></div>
+        <div><div class="dk">회사 / 직위</div><div class="dv">${esc(p.corp_name)} / ${esc(p.ofcps)||"—"}</div></div>
+        <div><div class="dk">상태</div><div class="dv">${p.status==="active"?"재직":"퇴임 추정"}${sig?` · ${sig}`:""}${mv.moved?` · 이동 ${mv.corps.length}사`:""}</div></div>
+        <div><div class="dk">등기 / 상근</div><div class="dv">${esc(p.rgist_exctv_at)||"—"} / ${esc(p.fte_at)||"—"}</div></div>
+        <div><div class="dk">임기만료</div><div class="dv">${esc(p.tenure_end_on)||"—"}</div></div>
+        <div><div class="dk">재직기간</div><div class="dv">${esc(p.hffc_pd)||"—"}</div></div>
         <div><div class="dk">학력(추정)</div><div class="dv">${highlight(eduOf(p))||"—"}</div></div>
         <div><div class="dk">담당업무</div><div class="dv">${highlight(p.chrg_job)||"—"}</div></div>
         <div><div class="dk">주요경력</div><div class="dv">${highlight(p.main_career)||"—"}</div></div>
-        <div><div class="dk">재직기간</div><div class="dv">${esc(p.hffc_pd)||"—"}</div></div>
-        <div><div class="dk">임기만료</div><div class="dv">${esc(p.tenure_end_on)||"—"}</div></div>
         <div><div class="dk">출처 보고서 / 최초 확인</div><div class="dv">${esc(fmtReport(p.srcReport))} / ${esc(fmtReport(p.firstSeen))}</div></div>
         ${others.length ? `<div><div class="dk">회사 간 이동 이력 (동일인 추정)</div><div class="move-list">${others.map(c=>`<span>${esc(c.name)} · ${c.status==="active"?"재직":"퇴임 추정"}</span>`).join("")}</div></div>` : ""}
+        <div><div class="dk">뉴스</div><div class="dv news"><a href="https://search.naver.com/search.naver?where=news&query=${q}" target="_blank" rel="noopener">네이버</a> <a href="https://www.google.com/search?q=${q}&tbm=nws" target="_blank" rel="noopener">구글</a></div></div>
       </div>
     </td></tr>`;
     return main + detail;
