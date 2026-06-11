@@ -601,22 +601,48 @@ $("importFile").onchange = e => {
    DART 호출 (캐시 + 일시오류 자동 재시도)
 ===================================================== */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const FETCH_CONCURRENCY = 8;   // 동시 DART 호출 수
+const FETCH_TIMEOUT_MS = 15000;
+
 async function dart(endpoint, params){
   const qs = new URLSearchParams({endpoint, ...params}).toString();
   let lastErr;
   for(let attempt = 0; attempt < 3; attempt++){
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     try{
-      const r = await fetch(`${API}?${qs}`, { headers:{ "X-App-Pass": PASS } });
+      const r = await fetch(`${API}?${qs}`, { headers:{ "X-App-Pass": PASS }, signal: ctrl.signal });
       const data = await r.json().catch(()=>({status:"900"}));
+      clearTimeout(to);
       // 프록시/DART 일시 오류(점검·게이트웨이)는 백오프 후 재시도
-      if(data && data.status === "900" && attempt < 2){ await sleep(600*(attempt+1)); continue; }
+      if(data && data.status === "900" && attempt < 2){ await sleep(500*(attempt+1)); continue; }
       return data;
     }catch(e){
+      clearTimeout(to);
       lastErr = e;
-      if(attempt < 2){ await sleep(600*(attempt+1)); continue; }
+      if(attempt < 2){ await sleep(500*(attempt+1)); continue; }
     }
   }
   throw (lastErr || new Error("NETWORK"));
+}
+
+/* 동시성 제한 풀: items를 worker로 처리하되 최대 concurrency개만 동시 실행.
+   worker가 throw하면 즉시 전체 중단(LIMIT/AUTH 같은 치명 오류 전파용). */
+function runPool(items, worker, concurrency, onProgress){
+  return new Promise((resolve, reject) => {
+    let i = 0, active = 0, done = 0, stopped = false;
+    const launch = () => {
+      if(stopped) return;
+      if(i >= items.length && active === 0){ resolve(); return; }
+      while(active < concurrency && i < items.length){
+        const item = items[i++]; active++;
+        Promise.resolve(worker(item)).then(() => {
+          active--; done++; if(onProgress) onProgress(done); launch();
+        }).catch(err => { stopped = true; reject(err); });
+      }
+    };
+    launch();
+  });
 }
 
 function cacheKey(corp, year, reprt){ return `es:${corp}:${year}:${reprt}`; }
@@ -681,44 +707,68 @@ async function runQuery(){
   const corps = [...selected.values()];
   const inclQ = $("inclQuarter").checked;
 
-  const totalSteps = corps.length * (years.length + (inclQ ? 1 : 0));
-  let done = 0;
+  // 최신 분기·반기 후보 (당해/전년 × 3분기) — 병렬로 모두 받아 가장 최신 비어있지 않은 것을 채택
+  const quarterCands = [];
+  if(inclQ){
+    for(const yy of [String(THIS_YEAR), String(THIS_YEAR-1)])
+      for(const rp of [REPORTS.Q3, REPORTS.HALF, REPORTS.Q1]) quarterCands.push({yy, rp});
+  }
+
+  // 회사별 결과 수집함
+  const results = new Map();      // corp_code -> {q:[{yy,rp,list}], a:Map(year->list)}
+  for(const corp of corps) results.set(corp.c, { q:[], a:new Map() });
+
+  // 전체 호출 태스크 구성 (회사 무관 평탄화 → 병렬 처리)
+  const tasks = [];
+  for(const corp of corps){
+    for(const c of quarterCands) tasks.push({ corp, year:c.yy, reprt:c.rp, kind:"q" });
+    for(const y of years)        tasks.push({ corp, year:y, reprt:REPORTS.ANNUAL, kind:"a" });
+  }
+
+  const total = tasks.length;
+  let errCount = 0;
   $("runBtn").disabled = true;
   $("runBtn").textContent = "조회 중…";
   $("progress").classList.add("on");
   $("barFill").style.width = "0%";
-  $("progText").textContent = `조회 준비 중… (대상 ${corps.length}개사)`;
-  const tick = label => { done++; $("barFill").style.width = (done/totalSteps*100)+"%"; $("progText").textContent = `진행 ${done}/${totalSteps} · ${label}`; };
+  $("progText").textContent = `조회 준비 중… (대상 ${corps.length}개사 · 요청 ${total}건, 최대 ${FETCH_CONCURRENCY}건 동시)`;
 
-  const merged = new Map(); // key: corp|name|birth
-  let latestBasis = new Set();
+  const worker = async (t) => {
+    try{
+      const list = await fetchExec(t.corp.c, t.year, t.reprt);
+      const slot = results.get(t.corp.c);
+      if(t.kind === "q"){ if(list && list.length) slot.q.push({ yy:t.year, rp:t.reprt, list }); }
+      else slot.a.set(t.year, list || []);
+    }catch(e){
+      if(e.message === "LIMIT" || e.message === "AUTH") throw e; // 치명 오류는 전체 중단
+      errCount++;  // 일시 오류(타임아웃/네트워크)는 해당 건만 건너뜀
+    }
+  };
 
   try{
+    await runPool(tasks, worker, FETCH_CONCURRENCY, d => {
+      $("barFill").style.width = (d/total*100)+"%";
+      $("progText").textContent = `진행 ${d}/${total}건${errCount?` · 누락 ${errCount}`:""}`;
+    });
+
+    // 수집 결과 병합 (최신 보고서=재직, 과거=퇴임 추정)
+    const rRank = { [REPORTS.Q3]:3, [REPORTS.HALF]:2, [REPORTS.Q1]:1 };
+    const merged = new Map();
+    let latestBasis = new Set();
     for(const corp of corps){
-      let newestSeen = null; // 이 회사에서 가장 최신 보고서 식별자
-
-      // 1) 최신 분기·반기 시도 (당해/전년)
-      if(inclQ){
-        let got = null;
-        outer:
-        for(const yy of [String(THIS_YEAR), String(THIS_YEAR-1)]){
-          for(const rp of [REPORTS.Q3, REPORTS.HALF, REPORTS.Q1]){
-            const list = await fetchExec(corp.c, yy, rp);
-            if(list && list.length){ got = {list, yy, rp}; break outer; }
-          }
-        }
-        tick(`${corp.n} 최신 보고서`);
-        if(got){
-          newestSeen = `${got.yy}-${got.rp}`;
-          latestBasis.add(`${got.yy} ${REPORT_NAME[got.rp]}`);
-          mergeList(merged, corp, got.list, newestSeen, true);
-        }
+      const slot = results.get(corp.c);
+      let newestSeen = null;
+      // 가장 최신(연도 → 분기 순위) 비어있지 않은 분기·반기 보고서 채택
+      if(slot.q.length){
+        slot.q.sort((a,b) => (b.yy - a.yy) || (rRank[b.rp] - rRank[a.rp]));
+        const got = slot.q[0];
+        newestSeen = `${got.yy}-${got.rp}`;
+        latestBasis.add(`${got.yy} ${REPORT_NAME[got.rp]}`);
+        mergeList(merged, corp, got.list, newestSeen, true);
       }
-
-      // 2) 연도별 사업보고서
+      // 연도별 사업보고서 (최신 연도 → 과거)
       for(const y of years){
-        const list = await fetchExec(corp.c, y, REPORTS.ANNUAL);
-        tick(`${corp.n} ${y} 사업보고서`);
+        const list = slot.a.get(y);
         if(list && list.length){
           const id = `${y}-${REPORTS.ANNUAL}`;
           if(!newestSeen){ newestSeen = id; latestBasis.add(`${y} 사업보고서`); mergeList(merged, corp, list, id, true); }
@@ -736,6 +786,7 @@ async function runQuery(){
     $("barFill").style.width = "100%";
     $("progText").textContent = `완료 · 총 ${people.length}명`;
     toast(`조회 완료 — 총 ${people.length}명 (재직 ${people.filter(p=>p.status==="active").length} / 퇴임 추정 ${people.filter(p=>p.status==="left").length})`);
+    if(errCount) showBanner(`${errCount}건의 보고서가 일시 오류로 누락됐습니다. 다시 조회하면 캐시 덕분에 빠르게 보완됩니다.`, "warn", true);
   }catch(e){
     if(e.message === "LIMIT") showBanner("DART 일일 호출 한도(20,000건)를 초과했습니다. 내일 다시 시도하거나, 이미 캐시된 범위로는 즉시 조회됩니다.", "warn", false);
     else if(e.message === "AUTH") showBanner("인증이 만료되었습니다. 새로고침 후 다시 접속하세요.", "err", false);
