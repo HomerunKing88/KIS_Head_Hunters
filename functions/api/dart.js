@@ -77,12 +77,27 @@ export async function onRequest({ request, env }) {
   }
 
   const target = `${DART_BASE}/${dartPath}?${params.toString()}`;
+  // 오류 메시지에 인증키가 새어나가지 않도록 마스킹
+  const safe = m => String(m || "").replace(/crtfc_key=[^&\s]+/gi, "crtfc_key=***");
 
   try {
     const r = await fetch(target, {
+      // 정상 User-Agent가 없으면 DART 방화벽이 오류페이지(error1.html)로 리다이렉트하므로 명시한다.
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; KISHeadHunters/1.0)",
+        "Accept": "application/json,text/plain,*/*",
+      },
+      // 리다이렉트를 따라가지 않는다 — 따라가면 error1.html 루프로 "Too many redirects" 발생.
+      redirect: "manual",
       // DART 응답은 작고 변동성이 있어 엣지 캐시는 사용하지 않는다(앱이 localStorage 캐시 담당).
       cf: { cacheTtl: 0 },
     });
+
+    // DART가 오류페이지로 리다이렉트하면 키 미승인/차단/제한 가능성 (redirect:manual → status 0 또는 3xx)
+    if (r.status === 0 || (r.status >= 300 && r.status < 400)) {
+      return json({ status: "900", message: "DART가 요청을 오류페이지로 리다이렉트했습니다. DART 키 승인 상태 또는 호출 제한을 확인하세요." }, 502);
+    }
+
     const text = await r.text();
     // DART 는 JSON 을 반환하지만, 점검/오류 시 비-JSON 이 올 수 있으므로 방어적으로 파싱.
     try {
@@ -95,9 +110,9 @@ export async function onRequest({ request, env }) {
         },
       });
     } catch (_) {
-      return json({ status: "900", message: "DART 응답 파싱 실패", raw: text.slice(0, 200) }, 502);
+      return json({ status: "900", message: "DART 응답이 JSON이 아닙니다(점검/오류 페이지 가능성).", raw: safe(text).slice(0, 160) }, 502);
     }
   } catch (e) {
-    return json({ status: "900", message: "DART 연결 실패: " + (e && e.message) }, 502);
+    return json({ status: "900", message: "DART 연결 실패: " + safe(e && e.message) }, 502);
   }
 }
