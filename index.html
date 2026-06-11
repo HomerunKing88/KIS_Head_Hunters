@@ -15,7 +15,7 @@
   --r:10px; --shadow:0 1px 3px rgba(11,45,91,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{font-size:16.5px}
+html{font-size:16.5px;overflow-x:hidden}
 body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.55;overflow-x:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,select{font-family:inherit;font-size:.93rem;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:#fff;color:var(--text)}
@@ -361,6 +361,10 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
 
 <script>
 "use strict";
+/* 새로고침/재진입 시 이전 스크롤 위치를 복원하지 않고 항상 최상단에서 시작 */
+if("scrollRestoration" in history) history.scrollRestoration = "manual";
+window.addEventListener("load", () => window.scrollTo(0, 0));
+
 /* =====================================================
    상수 / 상태
 ===================================================== */
@@ -451,10 +455,10 @@ function init(){
   const fy = $("fromYear");
   for(let y = THIS_YEAR-1; y >= THIS_YEAR-8; y--){
     const o = document.createElement("option");
-    o.value = y; o.textContent = `${y}년 사업보고서부터`;
+    o.value = y; o.textContent = (y === THIS_YEAR-1) ? `${y}년 최신 사업보고서만` : `${y}년 사업보고서부터(과거 통합)`;
     fy.appendChild(o);
   }
-  fy.value = THIS_YEAR - 5;
+  fy.value = THIS_YEAR - 1;   // 기본: 최신 사업보고서만 (과거 필요 시 사용자가 선택)
   refreshGroupSelect();
   loadState();           // 선택 기업·필터·연도 복원
   loadCorpIndex();
@@ -478,6 +482,7 @@ function init(){
     applyView();
   };
   applyView();
+  window.scrollTo(0, 0);   // 게이트 통과 후에도 최상단에서 시작
 }
 
 function onFilterChange(){ saveState(); render(); }
