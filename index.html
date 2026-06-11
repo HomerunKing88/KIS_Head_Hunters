@@ -280,6 +280,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
   <!-- 결과 -->
   <section class="card">
     <div class="result-meta">
+      <span><b id="resCorpCount">0</b>개사</span>
       <span>후보 <b id="resCount">0</b>명</span>
       <div class="stats" id="resStats"></div>
       <div class="meta-ctl">
@@ -1042,12 +1043,12 @@ function renderStats(rows){
   const sig = rows.filter(r => signalOf(r)).length;
   const mov = rows.filter(r => moveInfo(r).moved).length;
   const corpN = new Set(rows.map(r => r.corp_code)).size;
+  $("resCorpCount").textContent = corpN;
   $("resStats").innerHTML = rows.length ? `
     <span class="s dot act"><b>${act}</b> 재직</span>
     <span class="s dot left"><b>${left}</b> 퇴임 추정</span>
     <span class="s dot sig"><b>${sig}</b> 임기만료 임박</span>
-    <span class="s dot mov"><b>${mov}</b> 회사 간 이동</span>
-    <span class="s"><b>${corpN}</b>개사</span>` : "";
+    <span class="s dot mov"><b>${mov}</b> 회사 간 이동</span>` : "";
 }
 
 function render(){
