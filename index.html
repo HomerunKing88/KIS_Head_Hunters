@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Exec Scope — DART 임원 인텔리전스</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<style>
+:root{
+  --ink:#0B2D5B; --ink2:#133D74; --sky:#4A9FE8; --sky-soft:#EAF3FC;
+  --bg:#F4F6F9; --card:#FFFFFF; --line:#DCE3EC; --text:#1A2433; --sub:#5C6B80;
+  --amber:#E8862E; --amber-soft:#FCF0E3; --green:#2E9E6B; --green-soft:#E6F4ED;
+  --gray:#8A94A6; --gray-soft:#EEF1F5; --danger:#C8463C;
+  --r:10px; --shadow:0 1px 3px rgba(11,45,91,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select{font-family:inherit;font-size:.93rem;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:#fff;color:var(--text)}
+input:focus,select:focus{outline:2px solid var(--sky);outline-offset:1px;border-color:var(--sky)}
+
+/* ---------- 로그인 게이트 ---------- */
+#gate{position:fixed;inset:0;background:linear-gradient(160deg,var(--ink) 0%,var(--ink2) 70%,#1B4E8F 100%);display:flex;align-items:center;justify-content:center;z-index:100}
+.gate-box{background:#fff;border-radius:14px;padding:38px 36px;width:min(380px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.gate-box .eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.18em;color:var(--sky);margin-bottom:6px}
+.gate-box h1{font-size:1.45rem;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+.gate-box p{font-size:.85rem;color:var(--sub);margin:8px 0 20px}
+.gate-box input{width:100%;padding:11px 12px;font-size:1rem;margin-bottom:12px}
+.gate-box .err{color:var(--danger);font-size:.82rem;min-height:1.2em;margin-bottom:8px}
+.btn-primary{display:inline-block;width:100%;background:var(--ink);color:#fff;font-weight:700;font-size:.95rem;padding:12px;border-radius:8px;transition:background .15s}
+.btn-primary:hover{background:var(--ink2)}
+.btn-primary:disabled{background:var(--gray);cursor:not-allowed}
+
+/* ---------- 헤더 ---------- */
+header{background:var(--ink);color:#fff;padding:18px 26px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header .logo{font-size:1.22rem;font-weight:800;letter-spacing:-.01em}
+header .logo span{color:var(--sky)}
+header .tag{font-size:.78rem;color:#B8CCE6}
+header .right{margin-left:auto;font-size:.74rem;color:#8FB2DA}
+
+main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-direction:column;gap:16px}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line)}
+.card-head .step{font-size:.68rem;font-weight:800;letter-spacing:.14em;color:var(--sky)}
+.card-head h2{font-size:.98rem;font-weight:700;color:var(--ink)}
+.card-head .hint{font-size:.76rem;color:var(--sub);margin-left:auto;text-align:right}
+.card-body{padding:16px 18px}
+
+/* ---------- 칩 / 프리셋 ---------- */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.86rem;font-weight:600;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--ink);transition:all .12s}
+.chip:hover{border-color:var(--sky);background:var(--sky-soft)}
+.chip.preset::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sky)}
+.sel-chip{display:inline-flex;align-items:center;gap:7px;font-size:.83rem;padding:5px 8px 5px 12px;border-radius:7px;background:var(--sky-soft);border:1px solid #C6DFF6;color:var(--ink)}
+.sel-chip b{font-weight:700}
+.sel-chip .x{font-weight:800;color:var(--sub);padding:0 4px;border-radius:4px}
+.sel-chip .x:hover{color:var(--danger)}
+.sel-chip .asset{font-size:.72rem;color:var(--sub)}
+
+/* ---------- 검색 자동완성 ---------- */
+.search-wrap{position:relative;max-width:420px}
+.search-wrap input{width:100%}
+.ac{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(11,45,91,.14);max-height:280px;overflow-y:auto;z-index:30;display:none}
+.ac.open{display:block}
+.ac-item{display:flex;justify-content:space-between;gap:10px;padding:9px 13px;font-size:.88rem;cursor:pointer}
+.ac-item:hover{background:var(--sky-soft)}
+.ac-item .code{font-size:.74rem;color:var(--sub)}
+
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row + .row{margin-top:12px}
+.lbl{font-size:.8rem;font-weight:700;color:var(--sub)}
+.btn{font-size:.85rem;font-weight:600;padding:8px 15px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--ink);transition:all .12s}
+.btn:hover{border-color:var(--sky);background:var(--sky-soft)}
+.btn.solid{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.solid:hover{background:var(--ink2)}
+.btn.solid:disabled{background:var(--gray);border-color:var(--gray);cursor:not-allowed}
+.btn.sm{font-size:.78rem;padding:5px 11px}
+
+/* ---------- 진행 표시 ---------- */
+#progress{display:none;align-items:center;gap:12px;margin-top:12px;font-size:.85rem;color:var(--sub)}
+#progress.on{display:flex}
+.bar{flex:1;height:7px;background:var(--gray-soft);border-radius:4px;overflow:hidden;max-width:340px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sky),var(--ink2));transition:width .25s}
+
+/* ---------- 필터 바 ---------- */
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.f-group{display:flex;flex-direction:column;gap:5px}
+.f-group input,.f-group select{width:100%}
+.toggles{display:flex;flex-wrap:wrap;gap:14px;margin-top:13px;padding-top:13px;border-top:1px dashed var(--line)}
+.tg{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;color:var(--text);cursor:pointer;user-select:none}
+.tg input{accent-color:var(--ink);width:15px;height:15px}
+
+/* ---------- 결과 테이블 ---------- */
+.result-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line);font-size:.85rem;color:var(--sub)}
+.result-meta b{color:var(--ink);font-size:1.05rem}
+.table-wrap{overflow:auto;max-height:72vh}
+table{width:100%;border-collapse:collapse;font-size:.84rem;min-width:1080px}
+thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.76rem;letter-spacing:.02em;text-align:left;padding:9px 11px;white-space:nowrap;cursor:pointer;user-select:none;z-index:5}
+thead th .arrow{opacity:.55;font-size:.68rem;margin-left:3px}
+tbody td{padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:hover{background:var(--sky-soft)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.b-active{background:var(--green-soft);color:var(--green)}
+.b-left{background:var(--gray-soft);color:var(--gray)}
+.b-signal{background:var(--amber-soft);color:var(--amber)}
+.b-signal::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--amber);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.b-signal::before{animation:none}}
+.career{max-width:300px;color:var(--sub);font-size:.8rem}
+.news a{display:inline-block;font-size:.74rem;font-weight:700;color:var(--ink);background:var(--sky-soft);border:1px solid #C6DFF6;border-radius:6px;padding:3px 8px;text-decoration:none;margin:1px 2px 1px 0}
+.news a:hover{background:var(--sky);color:#fff}
+.empty{padding:46px 20px;text-align:center;color:var(--sub);font-size:.9rem}
+
+footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color:var(--gray)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:.85rem;padding:11px 20px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s;z-index:90;max-width:90vw}
+.toast.on{opacity:1}
+@media (max-width:640px){html{font-size:14px} main{padding:14px 12px 50px} .card-body{padding:13px 13px}}
+</style>
+</head>
+<body>
+
+<!-- 비밀번호 게이트 -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="eyebrow">INTERNAL · 경영전략실</div>
+    <h1>Exec Scope</h1>
+    <p>DART 공시 기반 임원 인텔리전스 툴입니다.<br>부서 공용 비밀번호를 입력하세요.</p>
+    <input type="password" id="gatePass" placeholder="비밀번호" autocomplete="off" />
+    <div class="err" id="gateErr"></div>
+    <button class="btn-primary" id="gateBtn">접속</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">Exec <span>Scope</span></div>
+  <div class="tag">DART 정기보고서 기반 · 전현직 임원 서치</div>
+  <div class="right">내부 검토용 · 외부 공유 금지</div>
+</header>
+
+<main>
+
+  <!-- STEP 1: 대상 기업 -->
+  <section class="card">
+    <div class="card-head">
+      <span class="step">STEP 1</span><h2>대상 기업 선택</h2>
+      <span class="hint">프리셋 클릭 또는 기업명 검색으로 추가</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <span class="lbl">금융권 프리셋</span>
+        <div class="chip-row" id="presetRow"></div>
+      </div>
+      <div class="row">
+        <span class="lbl">기업 검색</span>
+        <div class="search-wrap">
+          <input type="text" id="corpSearch" placeholder="기업명 입력 (전체 공시기업 대상)" autocomplete="off" />
+          <div class="ac" id="acList"></div>
+        </div>
+      </div>
+      <div class="row">
+        <span class="lbl">선택된 기업 <b id="selCount">0</b>개</span>
+        <button class="btn sm" id="clearSel">전체 비우기</button>
+        <button class="btn sm" id="loadSize">규모(자산총계) 불러오기</button>
+        <span style="flex-basis:100%"></span>
+        <div class="chip-row" id="selRow"></div>
+      </div>
+      <div class="row">
+        <span class="lbl">내 그룹</span>
+        <select id="groupSelect" style="min-width:160px"><option value="">그룹 불러오기…</option></select>
+        <button class="btn sm" id="saveGroup">현재 선택을 그룹으로 저장</button>
+        <button class="btn sm" id="delGroup">그룹 삭제</button>
+        <button class="btn sm" id="exportGroup">내보내기(.json)</button>
+        <button class="btn sm" id="importGroup">가져오기</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" />
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2: 조회 -->
+  <section class="card">
+    <div class="card-head">
+      <span class="step">STEP 2</span><h2>임원 데이터 조회</h2>
+      <span class="hint">연도별 사업보고서를 순회 조회하여 전현직을 통합합니다</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <span class="lbl">조회 시작 연도</span>
+        <select id="fromYear"></select>
+        <label class="tg"><input type="checkbox" id="inclQuarter" checked />최신 분기·반기보고서 포함 (최신성 보강)</label>
+        <button class="btn solid" id="runBtn">조회 실행</button>
+      </div>
+      <div id="progress"><div class="bar"><i id="barFill"></i></div><span id="progText"></span></div>
+    </div>
+  </section>
+
+  <!-- STEP 3: 필터 -->
+  <section class="card">
+    <div class="card-head">
+      <span class="step">STEP 3</span><h2>후보 필터링</h2>
+      <span class="hint">모든 필터는 즉시 반영 (API 호출 없음)</span>
+    </div>
+    <div class="card-body">
+      <div class="filter-grid">
+        <div class="f-group"><span class="lbl">포함 키워드 (직위·담당·경력, 쉼표=OR)</span><input id="fInc" placeholder="예: IB, 리스크, CFO" /></div>
+        <div class="f-group"><span class="lbl">제외 키워드 (쉼표 구분)</span><input id="fExc" placeholder="예: 고문, 자문" /></div>
+        <div class="f-group"><span class="lbl">출생연도 범위</span>
+          <div class="row" style="gap:6px;flex-wrap:nowrap"><input id="fBirthFrom" placeholder="1960" inputmode="numeric" /><span>~</span><input id="fBirthTo" placeholder="1979" inputmode="numeric" /></div>
+        </div>
+        <div class="f-group"><span class="lbl">재직 상태</span>
+          <select id="fStatus"><option value="">전체</option><option value="active">재직</option><option value="left">퇴임 추정</option></select>
+        </div>
+        <div class="f-group"><span class="lbl">자산총계 최소 (조원, 규모 조회 후)</span><input id="fAsset" placeholder="예: 5" inputmode="decimal" /></div>
+      </div>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="exOutside" checked />사외이사 제외</label>
+        <label class="tg"><input type="checkbox" id="exAuditor" checked />감사·감사위원 제외</label>
+        <label class="tg"><input type="checkbox" id="onlyReg" />등기임원만</label>
+        <label class="tg"><input type="checkbox" id="onlyFte" />상근만</label>
+        <label class="tg"><input type="checkbox" id="onlySignal" />임기만료 임박만 (6개월 이내)</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- 결과 -->
+  <section class="card">
+    <div class="result-meta">
+      <span>후보 <b id="resCount">0</b>명</span>
+      <span id="resBasis"></span>
+      <span style="margin-left:auto"></span>
+      <button class="btn sm" id="csvBtn">CSV 다운로드</button>
+    </div>
+    <div class="table-wrap">
+      <table id="resTable">
+        <thead><tr>
+          <th data-k="nm">이름<span class="arrow">↕</span></th>
+          <th data-k="birth_ym">생년월<span class="arrow">↕</span></th>
+          <th data-k="corp_name">회사<span class="arrow">↕</span></th>
+          <th data-k="ofcps">직위<span class="arrow">↕</span></th>
+          <th data-k="status">상태<span class="arrow">↕</span></th>
+          <th data-k="tenure_end_on">임기만료<span class="arrow">↕</span></th>
+          <th>등기/상근</th>
+          <th>담당업무</th>
+          <th>주요경력</th>
+          <th>재직기간</th>
+          <th>뉴스</th>
+        </tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+      <div class="empty" id="emptyMsg">STEP 1에서 기업을 선택하고 조회를 실행하세요.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  데이터 출처: 금융감독원 전자공시시스템(DART) 정기보고서 임원현황 · 보고서 제출 주기 특성상 최신 인사가 수개월 지연 반영될 수 있습니다.<br>
+  본 자료는 내부 검토용이며 인물 정보가 포함되어 있으므로 외부 공유를 금지합니다.
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* =====================================================
+   상수 / 상태
+===================================================== */
+const API = "/api/dart";
+const THIS_YEAR = new Date().getFullYear();
+const REPORTS = { ANNUAL:"11011", HALF:"11012", Q1:"11013", Q3:"11014" };
+const REPORT_NAME = {"11011":"사업보고서","11012":"반기보고서","11013":"1분기보고서","11014":"3분기보고서"};
+
+/* 금융권 프리셋 — 회사명 기준, 로드 시 corp_index와 매칭 */
+const PRESETS = {
+  "은행": ["국민은행","신한은행","하나은행","우리은행","중소기업은행","한국산업은행","한국수출입은행","농협은행","수협은행","한국스탠다드차타드은행","한국씨티은행","카카오뱅크","케이뱅크","토스뱅크","부산은행","아이엠뱅크","경남은행","광주은행","전북은행","제주은행"],
+  "증권": ["한국투자증권","미래에셋증권","NH투자증권","삼성증권","KB증권","신한투자증권","하나증권","메리츠증권","키움증권","대신증권","유안타증권","한화투자증권","교보증권","현대차증권","SK증권","유진투자증권","LS증권","DB증권","IBK투자증권","신영증권","부국증권","한양증권","다올투자증권","BNK투자증권","카카오페이증권","토스증권"],
+  "생명보험": ["삼성생명보험","한화생명보험","교보생명보험","신한라이프생명보험","농협생명보험","미래에셋생명보험","동양생명보험","KB라이프생명보험","흥국생명보험","ABL생명보험","iM라이프생명보험","KDB생명보험","푸본현대생명보험","메트라이프생명보험","라이나생명보험","AIA생명보험"],
+  "손해보험": ["삼성화재해상보험","DB손해보험","현대해상화재보험","KB손해보험","메리츠화재해상보험","한화손해보험","롯데손해보험","흥국화재해상보험","농협손해보험","하나손해보험","캐롯손해보험","서울보증보험","코리안리재보험"],
+  "자산운용": ["미래에셋자산운용","삼성자산운용","KB자산운용","한화자산운용","신한자산운용","키움투자자산운용","한국투자신탁운용","NH아문디자산운용","하나자산운용","교보악사자산운용","이지스자산운용"],
+  "저축은행": ["SBI저축은행","OK저축은행","한국투자저축은행","웰컴저축은행","페퍼저축은행","애큐온저축은행","다올저축은행","상상인저축은행","모아저축은행","신한저축은행","하나저축은행","KB저축은행","우리금융저축은행"]
+};
+
+let PASS = sessionStorage.getItem("es_pass") || "";
+let corpIndex = null;          // [{c,n,s}]
+let selected = new Map();      // corp_code -> {c,n,s,asset?}
+let people = [];               // 통합 인물 행
+let basisText = "";
+let sortKey = "", sortAsc = true;
+
+const $ = id => document.getElementById(id);
+const toast = msg => { const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),3200); };
+
+/* =====================================================
+   비밀번호 게이트
+===================================================== */
+async function tryAuth(pw){
+  const r = await fetch(`${API}?endpoint=auth`, { headers:{ "X-App-Pass": pw } });
+  return r.ok;
+}
+$("gateBtn").onclick = async () => {
+  const pw = $("gatePass").value.trim();
+  if(!pw) return;
+  $("gateBtn").disabled = true; $("gateErr").textContent = "";
+  try{
+    if(await tryAuth(pw)){
+      PASS = pw; sessionStorage.setItem("es_pass", pw);
+      $("gate").style.display = "none";
+      init();
+    } else $("gateErr").textContent = "비밀번호가 올바르지 않습니다.";
+  }catch(e){ $("gateErr").textContent = "서버 연결 실패. 배포 상태를 확인하세요."; }
+  $("gateBtn").disabled = false;
+};
+$("gatePass").addEventListener("keydown", e => { if(e.key==="Enter") $("gateBtn").click(); });
+
+(async () => {
+  if(PASS && await tryAuth(PASS).catch(()=>false)){ $("gate").style.display="none"; init(); }
+})();
+
+/* =====================================================
+   초기화
+===================================================== */
+let inited = false;
+function init(){
+  if(inited) return; inited = true;
+  // 프리셋 칩
+  const pr = $("presetRow");
+  Object.keys(PRESETS).forEach(name => {
+    const b = document.createElement("button");
+    b.className = "chip preset"; b.textContent = name;
+    b.onclick = () => addPreset(name);
+    pr.appendChild(b);
+  });
+  // 연도 셀렉트 (최근 8년)
+  const fy = $("fromYear");
+  for(let y = THIS_YEAR-1; y >= THIS_YEAR-8; y--){
+    const o = document.createElement("option");
+    o.value = y; o.textContent = `${y}년 사업보고서부터`;
+    fy.appendChild(o);
+  }
+  fy.value = THIS_YEAR - 5;
+  refreshGroupSelect();
+  loadCorpIndex();
+  // 필터 즉시 반영
+  ["fInc","fExc","fBirthFrom","fBirthTo","fStatus","fAsset","exOutside","exAuditor","onlyReg","onlyFte","onlySignal"]
+    .forEach(id => $(id).addEventListener("input", render));
+}
+
+async function loadCorpIndex(){
+  try{
+    const r = await fetch("corp_index.json");
+    if(!r.ok) throw 0;
+    corpIndex = await r.json();
+    if(!Array.isArray(corpIndex) || !corpIndex.length) throw 0;
+  }catch(e){
+    corpIndex = [];
+    toast("corp_index.json이 없습니다. scripts/build_corp_index.py 실행 후 재배포하세요. (프리셋·검색 비활성)");
+  }
+}
+
+/* =====================================================
+   기업 검색 / 프리셋 매칭
+===================================================== */
+function normalize(s){ return s.replace(/주식회사|\(주\)|㈜|\s/g,""); }
+
+function findCorp(name){
+  if(!corpIndex || !corpIndex.length) return null;
+  const q = normalize(name);
+  let exact=null, starts=null, incl=null;
+  for(const c of corpIndex){
+    const n = normalize(c.n);
+    if(n === q){ // 동명 회사 존재 시 상장사 우선
+      if(!exact || (c.s && !exact.s)) exact = c;
+    }
+    else if(!starts && n.startsWith(q)) starts = c;
+    else if(!incl && n.includes(q)) incl = c;
+  }
+  return exact || starts || incl;
+}
+
+function addPreset(name){
+  if(!corpIndex || !corpIndex.length){ toast("corp_index.json 로드 전입니다."); return; }
+  const misses = [];
+  PRESETS[name].forEach(nm => {
+    const c = findCorp(nm);
+    if(c) selected.set(c.c, {...c});
+    else misses.push(nm);
+  });
+  renderSelected();
+  toast(misses.length ? `${name} 추가 완료 · 미매칭 ${misses.length}건: ${misses.join(", ")}` : `${name} 프리셋 ${PRESETS[name].length}개사 추가`);
+}
+
+/* 자동완성 */
+let acTimer;
+$("corpSearch").addEventListener("input", () => {
+  clearTimeout(acTimer);
+  acTimer = setTimeout(() => {
+    const q = normalize($("corpSearch").value.trim());
+    const box = $("acList");
+    if(q.length < 2 || !corpIndex){ box.classList.remove("open"); return; }
+    const hits = [];
+    for(const c of corpIndex){
+      if(normalize(c.n).includes(q)){ hits.push(c); if(hits.length >= 30) break; }
+    }
+    box.innerHTML = hits.map(c =>
+      `<div class="ac-item" data-c="${c.c}"><span>${esc(c.n)}</span><span class="code">${c.s ? "상장 "+c.s : "비상장"} · ${c.c}</span></div>`
+    ).join("") || `<div class="ac-item">검색 결과 없음</div>`;
+    box.classList.add("open");
+    box.querySelectorAll("[data-c]").forEach(el => el.onclick = () => {
+      const c = corpIndex.find(x => x.c === el.dataset.c);
+      if(c){ selected.set(c.c, {...c}); renderSelected(); }
+      $("corpSearch").value = ""; box.classList.remove("open");
+    });
+  }, 180);
+});
+document.addEventListener("click", e => { if(!e.target.closest(".search-wrap")) $("acList").classList.remove("open"); });
+
+function renderSelected(){
+  const row = $("selRow");
+  row.innerHTML = "";
+  selected.forEach(c => {
+    const d = document.createElement("span");
+    d.className = "sel-chip";
+    d.innerHTML = `<b>${esc(c.n)}</b>${c.asset!=null ? `<span class="asset">${(c.asset/1e12).toFixed(1)}조</span>` : ""}<span class="x" data-c="${c.c}">×</span>`;
+    row.appendChild(d);
+  });
+  row.querySelectorAll(".x").forEach(x => x.onclick = () => { selected.delete(x.dataset.c); renderSelected(); });
+  $("selCount").textContent = selected.size;
+}
+$("clearSel").onclick = () => { selected.clear(); renderSelected(); };
+
+/* =====================================================
+   그룹 저장 / 불러오기 / 내보내기
+===================================================== */
+function getGroups(){ try{ return JSON.parse(localStorage.getItem("es_groups")||"{}"); }catch(e){ return {}; } }
+function setGroups(g){ localStorage.setItem("es_groups", JSON.stringify(g)); refreshGroupSelect(); }
+function refreshGroupSelect(){
+  const sel = $("groupSelect"); const g = getGroups();
+  sel.innerHTML = `<option value="">그룹 불러오기…</option>` + Object.keys(g).map(k=>`<option>${esc(k)}</option>`).join("");
+}
+$("saveGroup").onclick = () => {
+  if(!selected.size) return toast("선택된 기업이 없습니다.");
+  const name = prompt("그룹 이름을 입력하세요 (예: 생보사 1군)");
+  if(!name) return;
+  const g = getGroups();
+  g[name] = [...selected.values()].map(c => ({c:c.c, n:c.n, s:c.s}));
+  setGroups(g); toast(`그룹 "${name}" 저장 (${selected.size}개사)`);
+};
+$("groupSelect").onchange = e => {
+  const g = getGroups()[e.target.value];
+  if(!g) return;
+  g.forEach(c => selected.set(c.c, {...c}));
+  renderSelected(); toast(`그룹 "${e.target.value}" 불러옴`);
+};
+$("delGroup").onclick = () => {
+  const k = $("groupSelect").value;
+  if(!k) return toast("삭제할 그룹을 먼저 선택하세요.");
+  if(!confirm(`그룹 "${k}"를 삭제할까요?`)) return;
+  const g = getGroups(); delete g[k]; setGroups(g); toast("삭제 완료");
+};
+$("exportGroup").onclick = () => {
+  const blob = new Blob([JSON.stringify(getGroups(), null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "exec_scope_groups.json"; a.click();
+};
+$("importGroup").onclick = () => $("importFile").click();
+$("importFile").onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  f.text().then(t => {
+    const incoming = JSON.parse(t);
+    const g = getGroups();
+    Object.assign(g, incoming);
+    setGroups(g); toast(`그룹 ${Object.keys(incoming).length}개 가져옴`);
+  }).catch(()=>toast("JSON 파싱 실패"));
+  e.target.value = "";
+};
+
+/* =====================================================
+   DART 호출 (캐시 포함)
+===================================================== */
+async function dart(endpoint, params){
+  const qs = new URLSearchParams({endpoint, ...params}).toString();
+  const r = await fetch(`${API}?${qs}`, { headers:{ "X-App-Pass": PASS } });
+  return r.json();
+}
+
+function cacheKey(corp, year, reprt){ return `es:${corp}:${year}:${reprt}`; }
+function cacheGet(corp, year, reprt){
+  try{
+    const raw = localStorage.getItem(cacheKey(corp,year,reprt));
+    if(!raw) return null;
+    const o = JSON.parse(raw);
+    // 분기보고서는 24시간, 사업보고서(과거 연도)는 영구 캐시
+    if(reprt !== REPORTS.ANNUAL || +year >= THIS_YEAR-1){
+      if(Date.now() - o.ts > 86400e3) return null;
+    }
+    return o.list;
+  }catch(e){ return null; }
+}
+function cacheSet(corp, year, reprt, list){
+  // 필요한 필드만 저장해 용량 절약
+  const slim = (list||[]).map(p => ({
+    nm:p.nm, birth_ym:p.birth_ym, ofcps:p.ofcps, rgist_exctv_at:p.rgist_exctv_at,
+    fte_at:p.fte_at, chrg_job:p.chrg_job, main_career:p.main_career,
+    hffc_pd:p.hffc_pd, tenure_end_on:p.tenure_end_on
+  }));
+  try{ localStorage.setItem(cacheKey(corp,year,reprt), JSON.stringify({ts:Date.now(), list:slim})); }
+  catch(e){ /* 용량 초과 시 캐시 생략 */ }
+}
+
+/* 임원현황 1건 조회 (캐시 우선) — 반환: list 또는 null(데이터 없음) */
+async function fetchExec(corp, year, reprt){
+  const cached = cacheGet(corp, year, reprt);
+  if(cached) return cached;
+  const res = await dart("exctvSttus", { corp_code:corp, bsns_year:year, reprt_code:reprt });
+  if(res.status === "000"){ cacheSet(corp, year, reprt, res.list); return res.list; }
+  if(res.status === "013"){ cacheSet(corp, year, reprt, []); return []; }   // 자료 없음
+  if(res.status === "020") throw new Error("LIMIT");                          // 일일 한도 초과
+  if(res.status === "401") throw new Error("AUTH");
+  return [];
+}
+
+/* =====================================================
+   조회 실행: 기업 × 연도 순회 → 전현직 통합
+===================================================== */
+$("runBtn").onclick = runQuery;
+
+async function runQuery(){
+  if(!selected.size) return toast("STEP 1에서 기업을 먼저 선택하세요.");
+  const fromY = +$("fromYear").value;
+  const years = [];
+  for(let y = THIS_YEAR-1; y >= fromY; y--) years.push(String(y)); // 사업보고서는 전년도분이 최신
+  const corps = [...selected.values()];
+  const inclQ = $("inclQuarter").checked;
+
+  const totalSteps = corps.length * (years.length + (inclQ ? 1 : 0));
+  let done = 0;
+  $("runBtn").disabled = true;
+  $("progress").classList.add("on");
+  const tick = label => { done++; $("barFill").style.width = (done/totalSteps*100)+"%"; $("progText").textContent = `${done}/${totalSteps} · ${label}`; };
+
+  const merged = new Map(); // key: corp|name|birth
+  let latestBasis = new Set();
+
+  try{
+    for(const corp of corps){
+      let newestSeen = null; // 이 회사에서 가장 최신 보고서 식별자
+
+      // 1) 최신 분기·반기 시도 (당해/전년)
+      if(inclQ){
+        let got = null;
+        outer:
+        for(const yy of [String(THIS_YEAR), String(THIS_YEAR-1)]){
+          for(const rp of [REPORTS.Q3, REPORTS.HALF, REPORTS.Q1]){
+            const list = await fetchExec(corp.c, yy, rp);
+            if(list && list.length){ got = {list, yy, rp}; break outer; }
+          }
+        }
+        tick(`${corp.n} 최신 보고서`);
+        if(got){
+          newestSeen = `${got.yy}-${got.rp}`;
+          latestBasis.add(`${got.yy} ${REPORT_NAME[got.rp]}`);
+          mergeList(merged, corp, got.list, newestSeen, true);
+        }
+      }
+
+      // 2) 연도별 사업보고서
+      for(const y of years){
+        const list = await fetchExec(corp.c, y, REPORTS.ANNUAL);
+        tick(`${corp.n} ${y} 사업보고서`);
+        if(list && list.length){
+          const id = `${y}-${REPORTS.ANNUAL}`;
+          if(!newestSeen){ newestSeen = id; latestBasis.add(`${y} 사업보고서`); mergeList(merged, corp, list, id, true); }
+          else mergeList(merged, corp, list, id, false);
+        }
+      }
+    }
+
+    people = [...merged.values()];
+    basisText = `기준: ${[...latestBasis].sort().reverse().slice(0,4).join(", ")}${latestBasis.size>4?" 외":""} · 과거 ${fromY}년분까지 통합`;
+    sortKey = ""; render();
+    toast(`조회 완료 — 총 ${people.length}명 (재직 ${people.filter(p=>p.status==="active").length} / 퇴임 추정 ${people.filter(p=>p.status==="left").length})`);
+  }catch(e){
+    if(e.message === "LIMIT") toast("DART 일일 호출 한도(20,000건)를 초과했습니다. 내일 다시 시도하거나 캐시된 범위로 조회하세요.");
+    else if(e.message === "AUTH") toast("인증이 만료되었습니다. 새로고침 후 다시 접속하세요.");
+    else toast("조회 중 오류: " + e.message);
+  }finally{
+    $("runBtn").disabled = false;
+    setTimeout(()=>$("progress").classList.remove("on"), 800);
+  }
+}
+
+/* 인물 병합: 최신 보고서(isLatest)에 있으면 재직, 과거에만 있으면 퇴임 추정 */
+function mergeList(merged, corp, list, reportId, isLatest){
+  for(const p of list){
+    const key = `${corp.c}|${p.nm}|${p.birth_ym||""}`;
+    const ex = merged.get(key);
+    if(ex){
+      if(isLatest){ // 최신 정보로 갱신
+        Object.assign(ex, slimPerson(p), {status:"active", srcReport:reportId});
+      }
+      ex.firstSeen = minId(ex.firstSeen, reportId);
+    }else{
+      merged.set(key, {
+        ...slimPerson(p),
+        corp_code: corp.c, corp_name: corp.n,
+        status: isLatest ? "active" : "left",
+        srcReport: reportId, firstSeen: reportId
+      });
+    }
+  }
+}
+function slimPerson(p){
+  return { nm:p.nm||"", birth_ym:p.birth_ym||"", ofcps:p.ofcps||"", rgist_exctv_at:p.rgist_exctv_at||"",
+           fte_at:p.fte_at||"", chrg_job:p.chrg_job||"", main_career:p.main_career||"",
+           hffc_pd:p.hffc_pd||"", tenure_end_on:p.tenure_end_on||"" };
+}
+function minId(a,b){ return (a||"z") < (b||"z") ? a : b; }
+
+/* =====================================================
+   규모(자산총계) 조회
+===================================================== */
+$("loadSize").onclick = async () => {
+  if(!selected.size) return toast("기업을 먼저 선택하세요.");
+  const corps = [...selected.values()].filter(c => c.asset == null);
+  if(!corps.length) return toast("이미 모두 조회되어 있습니다.");
+  $("loadSize").disabled = true;
+  let ok = 0;
+  for(const c of corps){
+    try{
+      for(const y of [String(THIS_YEAR-1), String(THIS_YEAR-2)]){
+        const res = await dart("fnlttSinglAcnt", { corp_code:c.c, bsns_year:y, reprt_code:REPORTS.ANNUAL });
+        if(res.status !== "000") continue;
+        const pick = fs => (res.list||[]).find(r => r.fs_div===fs && r.account_nm && r.account_nm.replace(/\s/g,"")==="자산총계");
+        const row = pick("CFS") || pick("OFS");
+        if(row){
+          const v = Number(String(row.thstrm_amount||"").replace(/,/g,""));
+          if(v){ c.asset = v; selected.set(c.c, c); ok++; break; }
+        }
+      }
+    }catch(e){ if(e.message==="LIMIT"){ toast("호출 한도 초과로 중단합니다."); break; } }
+  }
+  renderSelected(); render();
+  $("loadSize").disabled = false;
+  toast(`규모 조회 완료: ${ok}/${corps.length}개사 (미조회사는 정기보고서 미제출 가능성)`);
+};
+
+/* =====================================================
+   필터 + 렌더링
+===================================================== */
+function kwList(v){ return v.split(",").map(s=>s.trim()).filter(Boolean); }
+function personText(p){ return `${p.ofcps} ${p.chrg_job} ${p.main_career}`; }
+function birthYear(p){ const m = (p.birth_ym||"").match(/(19|20)\d{2}/); return m ? +m[0] : null; }
+function parseTenure(p){
+  const m = (p.tenure_end_on||"").match(/(\d{4})[.\-\/]?\s?(\d{1,2})[.\-\/]?\s?(\d{1,2})?/);
+  if(!m) return null;
+  return new Date(+m[1], +m[2]-1, +(m[3]||1));
+}
+function signalOf(p){
+  if(p.status !== "active") return null;
+  const d = parseTenure(p); if(!d) return null;
+  const days = (d - Date.now()) / 86400e3;
+  if(days < 0) return "만료 경과";
+  if(days <= 183) return "임기만료 임박";
+  return null;
+}
+
+function filtered(){
+  const inc = kwList($("fInc").value), exc = kwList($("fExc").value);
+  const bf = +$("fBirthFrom").value || null, bt = +$("fBirthTo").value || null;
+  const st = $("fStatus").value;
+  const minAsset = parseFloat($("fAsset").value) || null;
+  const exOut = $("exOutside").checked, exAud = $("exAuditor").checked;
+  const onlyReg = $("onlyReg").checked, onlyFte = $("onlyFte").checked, onlySig = $("onlySignal").checked;
+
+  return people.filter(p => {
+    const t = personText(p);
+    if(exOut && /사외/.test(p.ofcps)) return false;
+    if(exAud && /감사/.test(p.ofcps)) return false;
+    if(inc.length && !inc.some(k => t.includes(k))) return false;
+    if(exc.length && exc.some(k => t.includes(k))) return false;
+    const by = birthYear(p);
+    if(bf && (!by || by < bf)) return false;
+    if(bt && (!by || by > bt)) return false;
+    if(st && p.status !== st) return false;
+    if(onlyReg && !/예|등기/.test(p.rgist_exctv_at)) return false;
+    if(onlyFte && !/상근/.test(p.fte_at)) return false;
+    if(onlySig && !signalOf(p)) return false;
+    if(minAsset){
+      const c = selected.get(p.corp_code);
+      if(!c || c.asset == null || c.asset < minAsset*1e12) return false;
+    }
+    return true;
+  });
+}
+
+function render(){
+  let rows = filtered();
+  if(sortKey){
+    rows = rows.slice().sort((a,b)=>{
+      const va = a[sortKey]||"", vb = b[sortKey]||"";
+      return (va<vb?-1:va>vb?1:0) * (sortAsc?1:-1);
+    });
+  }
+  $("resCount").textContent = rows.length;
+  $("resBasis").textContent = basisText;
+  const body = $("resBody");
+  $("emptyMsg").style.display = rows.length ? "none" : "block";
+  if(people.length && !rows.length) $("emptyMsg").textContent = "조건에 맞는 후보가 없습니다. 필터를 완화해 보세요.";
+
+  body.innerHTML = rows.slice(0, 800).map(p => {
+    const sig = signalOf(p);
+    const q = encodeURIComponent(`${p.nm} ${shortCorp(p.corp_name)}`);
+    return `<tr>
+      <td><b>${esc(p.nm)}</b></td>
+      <td class="num">${esc(p.birth_ym)}</td>
+      <td>${esc(p.corp_name)}</td>
+      <td>${esc(p.ofcps)}</td>
+      <td>${p.status==="active" ? `<span class="badge b-active">재직</span>` : `<span class="badge b-left">퇴임 추정</span>`}
+          ${sig ? `<span class="badge b-signal">${sig}</span>` : ""}</td>
+      <td class="num">${esc(p.tenure_end_on)}</td>
+      <td>${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
+      <td class="career">${esc(p.chrg_job)}</td>
+      <td class="career">${esc(p.main_career)}</td>
+      <td class="num">${esc(p.hffc_pd)}</td>
+      <td class="news">
+        <a href="https://search.naver.com/search.naver?where=news&query=${q}" target="_blank" rel="noopener">네이버</a>
+        <a href="https://www.google.com/search?q=${q}&tbm=nws" target="_blank" rel="noopener">구글</a>
+      </td>
+    </tr>`;
+  }).join("");
+  if(rows.length > 800) body.innerHTML += `<tr><td colspan="11" class="empty">표시 한도 800명 초과 — 필터로 좁히거나 CSV로 전체를 내려받으세요.</td></tr>`;
+}
+
+function shortCorp(n){ return n.replace(/주식회사|\(주\)|㈜/g,"").replace(/(생명보험|화재해상보험|손해보험)$/,m=>({"생명보험":"생명","화재해상보험":"화재","손해보험":"손보"}[m])).trim(); }
+function esc(s){ return String(s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+/* 정렬 */
+document.querySelectorAll("thead th[data-k]").forEach(th => th.onclick = () => {
+  const k = th.dataset.k;
+  if(sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = true; }
+  render();
+});
+
+/* =====================================================
+   CSV 다운로드 (Excel용 BOM 포함)
+===================================================== */
+$("csvBtn").onclick = () => {
+  const rows = filtered();
+  if(!rows.length) return toast("내보낼 데이터가 없습니다.");
+  const head = ["이름","생년월","회사","직위","상태","시그널","임기만료","등기여부","상근여부","담당업무","주요경력","재직기간","출처보고서"];
+  const lines = [head.join(",")].concat(rows.map(p => [
+    p.nm, p.birth_ym, p.corp_name, p.ofcps,
+    p.status==="active"?"재직":"퇴임 추정", signalOf(p)||"", p.tenure_end_on,
+    p.rgist_exctv_at, p.fte_at, p.chrg_job, p.main_career, p.hffc_pd, p.srcReport
+  ].map(v => `"${String(v||"").replace(/"/g,'""')}"`).join(",")));
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `exec_scope_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast(`${rows.length}명 CSV 다운로드`);
+};
+</script>
+</body>
+</html>

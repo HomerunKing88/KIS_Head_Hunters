@@ -1,0 +1,79 @@
+# CLAUDE.md — Exec Scope (DART 임원 인텔리전스)
+
+## 프로젝트 개요
+
+증권사 경영전략실 부서 내부용 헤드헌팅 기초 데이터 툴.
+DART(금융감독원 전자공시) OpenAPI의 **임원현황(exctvSttus)** 을 기반으로
+금융권 기업의 **전현직 임원을 통합 조회·필터링**하고, 인물별 뉴스 검색 링크를 제공한다.
+사용자는 부서원 수 명 수준. **개발 속도와 단순함이 디자인 원칙** — 프레임워크 없이 vanilla JS 단일 HTML 유지.
+
+## 아키텍처
+
+```
+index.html                  # 전체 앱 (UI + 로직, 단일 파일, vanilla JS)
+corp_index.json             # 전체 공시기업 인덱스 [{c:corp_code, n:회사명, s:종목코드}] — 스크립트로 생성
+functions/api/dart.js       # Cloudflare Pages Function. DART 프록시
+scripts/build_corp_index.py # corpCode.xml(zip) → corp_index.json 변환 (분기 1회 재실행 권장)
+```
+
+- **배포**: Cloudflare Pages (Git 연동 권장, 빌드 명령 없음, 출력 디렉토리 `/`)
+- **프록시가 필요한 이유**: DART API는 브라우저 CORS 미허용 + API 키 은닉
+- **환경변수 (Pages → Settings → Environment variables, 설정 후 재배포 필수)**
+  - `DART_API_KEY`: DART OpenAPI 인증키
+  - `APP_PASSWORD`: 부서 공용 비밀번호 (프론트는 `X-App-Pass` 헤더로 전달, 서버에서 검증)
+- **프록시 허용 엔드포인트**: exctvSttus, company, fnlttSinglAcnt, empSttus, auth(비밀번호 검증 전용)
+
+## 핵심 로직 (index.html 내)
+
+- **전현직 판별**: 회사별로 최신 보고서(분기·반기 우선, 없으면 최신 사업보고서)에 있으면 `재직`,
+  과거 보고서에만 있으면 `퇴임 추정`. 인물 키 = `corp_code|이름|생년월`.
+- **보고서 코드**: 11011 사업 / 11012 반기 / 11013 1분기 / 11014 3분기.
+  사업보고서는 전년도분이 최신(예: 2026년 현재 → bsns_year=2025).
+- **캐싱**: localStorage `es:{corp}:{year}:{reprt}`. 과거 사업보고서는 영구, 최신·분기는 24h TTL.
+  필요 필드만 slim 저장. **API 일일 한도(상태코드 020) 대응이 중요** — 한도 초과 시 throw "LIMIT".
+- **임기만료 시그널**: tenure_end_on 파싱 → 183일 이내 `임기만료 임박`, 경과 시 `만료 경과` 배지.
+- **필터**: 전부 클라이언트 사이드. 사외이사/감사 제외가 기본 ON.
+  자산총계 필터는 fnlttSinglAcnt(CFS 우선, OFS 폴백)로 별도 버튼 조회 후 동작.
+- **프리셋**: PRESETS 상수(은행/증권/생명보험/손해보험/자산운용/저축은행)에 회사명 배열.
+  로드 시 corp_index와 이름 정규화 매칭(주식회사·㈜·공백 제거, 완전일치 시 상장사 우선).
+  **사명 변경으로 미매칭이 나오면 PRESETS의 이름을 수정하는 방식으로 유지보수.**
+- **그룹**: localStorage `es_groups`. JSON 내보내기/가져오기로 부서원 간 공유.
+- **테이블**: 표시 한도 800행(초과분은 CSV로). CSV는 BOM 포함(Excel 한글 호환).
+
+## 프록시 동작 (functions/api/dart.js)
+
+- 모든 요청은 `X-App-Pass` 헤더를 `APP_PASSWORD` 와 비교해 검증. 불일치 시 HTTP 401 + `{status:"401"}`.
+- `endpoint=auth` 는 DART 를 호출하지 않고 비밀번호만 검증(게이트 통과 확인용).
+- 그 외 엔드포인트는 화이트리스트(`ALLOWED`)에 있을 때만 통과, `crtfc_key`(=DART_API_KEY)를 서버에서 주입.
+- DART 응답은 그대로 패스스루(JSON). 점검·오류 등 비-JSON 응답은 `{status:"900"}`(502)로 감싼다.
+- 엣지 캐시는 끔(`cacheTtl:0`) — 캐싱은 앱의 localStorage 가 담당.
+
+## 디자인 시스템
+
+KIS 스타일 준수: Pretendard 폰트, 네이비(#0B2D5B) + 스카이블루(#4A9FE8) 팔레트, 핀테크 모던.
+시그니처 요소는 임기만료 시그널 배지(주황 펄스 점). 과한 장식 금지, 데이터 밀도 우선.
+
+## 운영 유의사항 (코드 수정 시 깨뜨리지 말 것)
+
+1. API 키·비밀번호를 절대 프론트엔드 코드에 넣지 않는다.
+2. DART 호출은 반드시 캐시 확인 후 수행 (한도 보호).
+3. 상태코드 처리: 000 정상 / 013 자료없음(빈 배열 캐싱) / 020 한도초과 / 401 인증실패.
+4. 화면에 "보고서 기준" 표시와 "내부 검토용·외부 공유 금지" 문구 유지.
+5. 데이터 시점 한계(정기보고서 지연 반영)는 툴의 알려진 한계 — 뉴스 링크가 보완 수단.
+
+## 현재 상태
+
+- [x] 1단계 MVP 완성 (프리셋, 검색, 그룹, 전현직 통합, 필터, 시그널, 뉴스 링크, CSV)
+- [x] DART 프록시(functions/api/dart.js) 구현 — 비밀번호 검증 + 키 은닉 + 엔드포인트 화이트리스트
+- [x] corp_index 빌드 스크립트(scripts/build_corp_index.py) 구현 (표준 라이브러리만 사용)
+- [ ] corp_index.json 생성 및 첫 배포 (DART 키로 빌드 스크립트 1회 실행 필요)
+- [ ] 실데이터 테스트 (프리셋 미매칭 사명 보정, 필터 거동 확인)
+
+## 2단계 로드맵
+
+1. **네이버 뉴스 API 연동**: 프록시에 네이버 검색 API 추가(환경변수 NAVER_CLIENT_ID/SECRET),
+   인물 행 확장 시 기사 제목·링크 리스트 표시.
+2. **Claude API 인물 요약**: 수집 기사 텍스트 → 요약 카드. 프록시에 ANTHROPIC_API_KEY 추가.
+   비용 발생하므로 버튼 클릭 시에만 호출 + 결과 캐싱.
+3. **회사 간 이동 추적**: 이름+생년월 매칭으로 여러 회사에 걸친 커리어 경로 표시.
+   (현재 인물 키가 corp_code 포함이므로, 회사 무관 키로 2차 집계하는 레이어 추가 방식)

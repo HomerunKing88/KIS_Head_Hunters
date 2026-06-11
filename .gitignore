@@ -1,0 +1,12 @@
+# 로컬/에디터 부산물
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+
+# Cloudflare Wrangler 로컬 상태
+.wrangler/
+node_modules/
+
+# corp_index.json 은 배포에 필요하므로 커밋합니다.
+# (scripts/build_corp_index.py 로 생성 — 용량이 매우 크면 별도 배포 자산으로 관리 검토)
