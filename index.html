@@ -34,7 +34,7 @@ input:focus,select:focus{outline:2px solid var(--sky);outline-offset:1px;border-
 .btn-primary:disabled{background:var(--gray);cursor:not-allowed}
 
 /* ---------- 헤더 ---------- */
-header{background:var(--ink);color:#fff;padding:18px 26px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header{background:var(--ink);color:#fff;padding:18px 26px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;cursor:pointer}
 header .logo{font-size:1.22rem;font-weight:800;letter-spacing:-.01em}
 header .logo span{color:var(--sky)}
 header .tag{font-size:.78rem;color:#B8CCE6}
@@ -142,7 +142,10 @@ tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
 .b-move{background:var(--purple-soft);color:var(--purple)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.b-signal::before{animation:none}}
-.career{max-width:320px;color:var(--sub);font-size:.86rem}
+.career{max-width:300px;color:var(--sub);font-size:.86rem;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.edu{max-width:240px;font-size:.82rem;line-height:1.4;max-height:4.4em;overflow:hidden}
+.edu .ln:first-child{font-weight:600}
+.edu .ln+.ln{color:var(--sub);font-size:.78rem}
 .news a{display:inline-block;font-size:.74rem;font-weight:700;color:var(--ink);background:var(--sky-soft);border:1px solid #C6DFF6;border-radius:6px;padding:3px 8px;text-decoration:none;margin:1px 2px 1px 0}
 .news a:hover{background:var(--sky);color:#fff}
 /* 컬럼 표시 토글 */
@@ -182,7 +185,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
   </div>
 </div>
 
-<header>
+<header id="appHeader" title="클릭하면 새로고침합니다">
   <div class="logo">KIS <span>Head Hunters</span></div>
   <div class="tag">DART 정기보고서 기반 · 전현직 임원 서치</div>
   <div class="right">내부 검토용 · 외부 공유 금지</div>
@@ -355,6 +358,9 @@ const expanded = new Set();    // 펼쳐진 행 키
 
 const $ = id => document.getElementById(id);
 const toast = msg => { const t=$("toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),3200); };
+
+/* 상단 헤더 클릭 → 새로고침 */
+$("appHeader").onclick = () => location.reload();
 
 /* =====================================================
    비밀번호 게이트
@@ -968,6 +974,20 @@ function eduOf(p){
   if(edu && !EDU_SIGNAL.test(edu)) edu = "";  // 학력 신호 없으면 신뢰 낮음 → 비움
   return edu;
 }
+/* 학력 문자열을 학교 단위로 분할 (국가표기·학교 토큰 기준) */
+function eduParts(p){
+  const edu = eduOf(p); if(!edu) return [];
+  const tokens = edu.split(/\s+/);
+  const isCountry = t => /^[美日中英獨佛濠加露伊西蘭印泰越亞]$/.test(t);
+  const isSchool = t => /(대학교|대학원|대$|Univ\.?|University|College|고등학교)/.test(t);
+  const parts = []; let cur = []; let hasSchool = false;
+  for(const t of tokens){
+    if((isCountry(t) || (isSchool(t) && hasSchool)) && cur.length){ parts.push(cur.join(" ")); cur = []; hasSchool = false; }
+    cur.push(t); if(isSchool(t)) hasSchool = true;
+  }
+  if(cur.length) parts.push(cur.join(" "));
+  return parts;
+}
 
 function filtered(){
   const inc = kwList($("fInc").value), exc = kwList($("fExc").value);
@@ -1069,6 +1089,7 @@ function render(){
     const isOpen = expanded.has(k);
     const q = encodeURIComponent(`${p.nm} ${shortCorp(p.corp_name)}`);
     const others = mv.corps.filter(c => c.name !== p.corp_name);
+    const eduHtml = eduParts(p).map(e => `<div class="ln">${esc(e)}</div>`).join("");
     const main = `<tr class="main${isOpen?" open":""}" data-k="${esc(k)}">
       <td><span class="exp">▶</span></td>
       <td class="nm"><b>${esc(p.nm)}</b></td>
@@ -1081,7 +1102,7 @@ function render(){
           ${mv.moved ? `<span class="badge b-move">이동 ${mv.corps.length}사</span>` : ""}</td>
       <td class="num">${esc(fmtTenureShort(p))}</td>
       <td>${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
-      <td class="career col-edu">${esc(eduOf(p))}</td>
+      <td class="edu col-edu">${eduHtml}</td>
       <td class="career col-chrg">${esc(p.chrg_job)}</td>
       <td class="career col-career">${esc(p.main_career)}</td>
       <td class="num">${esc(p.hffc_pd)}</td>
