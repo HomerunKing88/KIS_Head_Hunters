@@ -1,0 +1,48 @@
+name: Build corp_index
+
+# corp_index.json(전체 공시기업 인덱스)을 GitHub 서버에서 생성·커밋한다.
+# 로컬 PC/파이썬 없이 모바일에서도 버튼만으로 실행 가능.
+#
+# 사전 준비: 저장소 Settings → Secrets and variables → Actions 에
+#   DART_API_KEY 시크릿을 등록해야 한다.
+# 실행: Actions 탭 → "Build corp_index" → Run workflow.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build corp_index.json
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+        run: |
+          if [ -z "$DART_API_KEY" ]; then
+            echo "::error::DART_API_KEY 시크릿이 없습니다. 저장소 Settings → Secrets and variables → Actions 에서 추가하세요."
+            exit 1
+          fi
+          python scripts/build_corp_index.py "$DART_API_KEY"
+
+      - name: Commit & push corp_index.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add corp_index.json
+          if git diff --cached --quiet; then
+            echo "변경 없음 — 커밋 생략"
+          else
+            git commit -m "corp_index.json 자동 생성 (GitHub Actions)"
+            git push
+          fi
