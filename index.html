@@ -87,7 +87,9 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sky),var(--ink2));transition:width .25s}
 
 /* ---------- 인라인 배너 ---------- */
-.banner{display:none;margin:0 18px 0;margin-top:14px;padding:11px 14px;border-radius:8px;font-size:.85rem;align-items:center;gap:10px}
+.run-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}
+.run-bar #runBtn{font-size:.95rem;padding:10px 22px}
+.banner{display:none;margin-top:14px;padding:11px 14px;border-radius:8px;font-size:.85rem;align-items:center;gap:10px}
 .banner.on{display:flex}
 .banner.err{background:#FBE9E7;border:1px solid #F1B7AE;color:var(--danger)}
 .banner.warn{background:var(--amber-soft);border:1px solid #F0CBA0;color:var(--amber)}
@@ -174,6 +176,8 @@ mark.hl{background:#FFF1A8;color:inherit;padding:0 1px;border-radius:2px}
 footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color:var(--gray)}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:.85rem;padding:11px 20px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s;z-index:90;max-width:90vw}
 .toast.on{opacity:1}
+/* 모바일: 입력 폰트 16px 이상이어야 포커스 시 자동 확대(줌)가 일어나지 않음 */
+@media (max-width:768px){ input,select{font-size:16px} }
 @media (max-width:640px){html{font-size:14px} main{padding:14px 12px 50px} .card-body{padding:13px 13px}}
 </style>
 </head>
@@ -238,10 +242,10 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
     </div>
   </section>
 
-  <!-- STEP 2: 조회 -->
+  <!-- STEP 2: 조회 범위 -->
   <section class="card">
     <div class="card-head">
-      <span class="step">STEP 2</span><h2>임원 데이터 조회</h2>
+      <span class="step">STEP 2</span><h2>조회 범위 설정</h2>
       <span class="hint">연도별 사업보고서를 순회 조회하여 전현직을 통합합니다</span>
     </div>
     <div class="card-body">
@@ -249,12 +253,8 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
         <span class="lbl">조회 시작 연도</span>
         <select id="fromYear"></select>
         <label class="tg"><input type="checkbox" id="inclQuarter" checked />최신 분기·반기보고서 포함 (최신성 보강)</label>
-        <button class="btn solid" id="runBtn">조회 실행</button>
-        <button class="btn" id="diagBtn" title="DART 연결·키 상태를 직접 점검합니다">연결 진단</button>
       </div>
-      <div id="progress"><span class="spinner"></span><div class="bar"><i id="barFill"></i></div><span id="progText"></span></div>
     </div>
-    <div class="banner" id="banner"><span id="bannerMsg"></span><button class="btn sm" id="bannerBtn">다시 시도</button></div>
   </section>
 
   <!-- STEP 3: 필터 -->
@@ -282,6 +282,13 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
         <label class="tg"><input type="checkbox" id="onlySignal" />임기만료 임박만 (6개월 이내)</label>
         <label class="tg"><input type="checkbox" id="onlyMove" />회사 간 이동자만 (동일인 복수사)</label>
       </div>
+      <div class="run-bar">
+        <button class="btn solid" id="runBtn">임원 데이터 조회 실행</button>
+        <button class="btn" id="diagBtn" title="DART 연결·키 상태를 직접 점검합니다">연결 진단</button>
+        <span class="hint" style="margin-left:auto">STEP 1~3 설정 후 조회하세요 · DART 호출이 일어납니다</span>
+      </div>
+      <div id="progress"><span class="spinner"></span><div class="bar"><i id="barFill"></i></div><span id="progText"></span></div>
+      <div class="banner" id="banner"><span id="bannerMsg"></span><button class="btn sm" id="bannerBtn">다시 시도</button></div>
     </div>
   </section>
 
