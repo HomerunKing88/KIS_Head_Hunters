@@ -999,6 +999,20 @@ function signalOf(p){
   if(days <= 183) return "임기만료 임박";
   return null;
 }
+/* 직위 서열 (높을수록 상위). 포함관계 주의: 부회장→회장, 부사장→사장, 상무보→상무 순서로 검사 */
+function ofcpsRank(p){
+  const s = p.ofcps || "";
+  if(/부회장/.test(s)) return 8;
+  if(/회장/.test(s)) return 9;
+  if(/부사장/.test(s)) return 5;
+  if(/사장/.test(s)) return 6;
+  if(/대표이사|대표집행|대표/.test(s)) return 7;   // 대표이사(사장/부사장 미표기) 상위 처리
+  if(/전무/.test(s)) return 4;
+  if(/상무보/.test(s)) return 2;
+  if(/상무/.test(s)) return 3;
+  if(/이사/.test(s)) return 1;
+  return 0;
+}
 
 /* 짧은 표기: 생년월 1963년 10월 → 63.10, 임기만료 2026년 12월 31일 → 26.12.31 */
 function pad2(n){ return String(n).padStart(2,"0"); }
@@ -1064,7 +1078,16 @@ function sortNumVal(p, k){
   if(k === "age"){ const a = ageOf(p); return a == null ? [1,0] : [0,a]; }
   if(k === "birth_ym"){ const b = parseBirth(p); return b ? [0, b.y*100 + (b.m||0)] : [1,0]; }
   if(k === "tenure_end_on"){ const d = parseTenure(p); return d ? [0, d.getTime()] : [1,0]; }
+  if(k === "ofcps"){ return [0, ofcpsRank(p)]; }
   return null;
+}
+/* 기본 정렬: 재직 우선 → 직위 높은 순 → 이름 */
+function defaultCompare(a, b){
+  const sa = a.status === "active" ? 0 : 1, sb = b.status === "active" ? 0 : 1;
+  if(sa !== sb) return sa - sb;
+  const ra = ofcpsRank(a), rb = ofcpsRank(b);
+  if(ra !== rb) return rb - ra;
+  return String(a.nm||"").localeCompare(String(b.nm||""), "ko");
 }
 
 /* =====================================================
@@ -1113,6 +1136,8 @@ function render(){
       const va = String(a[sortKey]||""), vb = String(b[sortKey]||"");
       return va.localeCompare(vb, "ko") * dir;
     });
+  } else {
+    rows = rows.slice().sort(defaultCompare);   // 기본: 재직 우선 → 직위 높은 순
   }
   $("resCount").textContent = rows.length;
   renderStats(rows);
@@ -1215,7 +1240,7 @@ function highlight(text){
 
 /* 정렬 (클릭 + 키보드 Enter/Space) */
 function doSort(k){
-  if(sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = true; }
+  if(sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = (k === "ofcps") ? false : true; }
   render();
 }
 document.querySelectorAll("thead th[data-k]").forEach(th => {
