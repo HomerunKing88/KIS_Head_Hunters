@@ -589,10 +589,15 @@ $("corpSearch").addEventListener("input", () => {
   acTimer = setTimeout(() => {
     const q = normalize($("corpSearch").value.trim());
     if(q.length < 2 || !corpIndex){ closeAc(); return; }
-    acHits = []; acIdx = -1;
+    acIdx = -1;
+    const listed = [], unlisted = [];   // 상장사 우선 노출
     for(const c of corpIndex){
-      if(normalize(c.n).includes(q)){ acHits.push(c); if(acHits.length >= 30) break; }
+      if(!normalize(c.n).includes(q)) continue;
+      if(c.s){ if(listed.length < 30) listed.push(c); }
+      else if(unlisted.length < 30) unlisted.push(c);
+      if(listed.length >= 30) break;    // 상장사 30개 확보 시 중단
     }
+    acHits = listed.concat(unlisted).slice(0, 30);
     renderAc();
   }, 180);
 });
