@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>Exec Scope — DART 임원 인텔리전스</title>
+<title>KIS Head Hunters — DART 임원 인텔리전스</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <style>
 :root{
@@ -15,7 +15,7 @@
   --r:10px; --shadow:0 1px 3px rgba(11,45,91,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{font-size:15px}
+html{font-size:16.5px}
 body{font-family:"Pretendard Variable",Pretendard,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.55}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,select{font-family:inherit;font-size:.93rem;border:1px solid var(--line);border-radius:7px;padding:7px 10px;background:#fff;color:var(--text)}
@@ -80,9 +80,9 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 .btn.sm{font-size:.78rem;padding:5px 11px}
 
 /* ---------- 진행 표시 ---------- */
-#progress{display:none;align-items:center;gap:12px;margin-top:12px;font-size:.85rem;color:var(--sub)}
+#progress{display:none;align-items:center;gap:12px;margin-top:14px;font-size:.92rem;color:var(--ink);font-weight:600}
 #progress.on{display:flex}
-.bar{flex:1;height:7px;background:var(--gray-soft);border-radius:4px;overflow:hidden;max-width:340px}
+.bar{flex:1;height:10px;background:var(--gray-soft);border-radius:5px;overflow:hidden;max-width:340px}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sky),var(--ink2));transition:width .25s}
 
 /* ---------- 인라인 배너 ---------- */
@@ -119,8 +119,8 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 
 /* ---------- 결과 테이블 ---------- */
 .table-wrap{overflow:auto;max-height:72vh}
-table{width:100%;border-collapse:collapse;font-size:.84rem;min-width:1120px}
-thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.76rem;letter-spacing:.02em;text-align:left;padding:9px 11px;white-space:nowrap;user-select:none;z-index:5}
+table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:1120px}
+thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.82rem;letter-spacing:.02em;text-align:left;padding:10px 11px;white-space:nowrap;user-select:none;z-index:5}
 thead th.sortable{cursor:pointer}
 thead th.sortable:hover{background:var(--ink2)}
 thead th:focus-visible{outline:2px solid var(--sky);outline-offset:-2px}
@@ -140,7 +140,7 @@ tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
 .b-move{background:var(--purple-soft);color:var(--purple)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.b-signal::before{animation:none}}
-.career{max-width:300px;color:var(--sub);font-size:.8rem}
+.career{max-width:320px;color:var(--sub);font-size:.86rem}
 .news a{display:inline-block;font-size:.74rem;font-weight:700;color:var(--ink);background:var(--sky-soft);border:1px solid #C6DFF6;border-radius:6px;padding:3px 8px;text-decoration:none;margin:1px 2px 1px 0}
 .news a:hover{background:var(--sky);color:#fff}
 /* 컬럼 표시 토글 */
@@ -171,7 +171,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
 <div id="gate">
   <div class="gate-box">
     <div class="eyebrow">INTERNAL · 경영전략실</div>
-    <h1>Exec Scope</h1>
+    <h1>KIS Head Hunters</h1>
     <p>DART 공시 기반 임원 인텔리전스 툴입니다.<br>부서 공용 비밀번호를 입력하세요.</p>
     <input type="password" id="gatePass" placeholder="비밀번호" autocomplete="off" />
     <div class="err" id="gateErr"></div>
@@ -180,7 +180,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
 </div>
 
 <header>
-  <div class="logo">Exec <span>Scope</span></div>
+  <div class="logo">KIS <span>Head Hunters</span></div>
   <div class="tag">DART 정기보고서 기반 · 전현직 임원 서치</div>
   <div class="right">내부 검토용 · 외부 공유 금지</div>
 </header>
@@ -237,7 +237,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
         <label class="tg"><input type="checkbox" id="inclQuarter" checked />최신 분기·반기보고서 포함 (최신성 보강)</label>
         <button class="btn solid" id="runBtn">조회 실행</button>
       </div>
-      <div id="progress"><div class="bar"><i id="barFill"></i></div><span id="progText"></span></div>
+      <div id="progress"><span class="spinner"></span><div class="bar"><i id="barFill"></i></div><span id="progText"></span></div>
     </div>
     <div class="banner" id="banner"><span id="bannerMsg"></span><button class="btn sm" id="bannerBtn">다시 시도</button></div>
   </section>
@@ -258,7 +258,6 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
         <div class="f-group"><span class="lbl">재직 상태</span>
           <select id="fStatus"><option value="">전체</option><option value="active">재직</option><option value="left">퇴임 추정</option></select>
         </div>
-        <div class="f-group"><span class="lbl">자산총계 최소 (조원, 규모 조회 후)</span><input id="fAsset" placeholder="예: 5" inputmode="decimal" /></div>
       </div>
       <div class="toggles">
         <label class="tg"><input type="checkbox" id="exOutside" checked />사외이사 제외</label>
@@ -406,7 +405,7 @@ function init(){
   renderSelected();
   render();
   // 필터 즉시 반영 + 상태 저장
-  ["fInc","fExc","fBirthFrom","fBirthTo","fStatus","fAsset","exOutside","exAuditor","onlyReg","onlyFte","onlySignal","onlyMove"]
+  ["fInc","fExc","fBirthFrom","fBirthTo","fStatus","exOutside","exAuditor","onlyReg","onlyFte","onlySignal","onlyMove"]
     .forEach(id => $(id).addEventListener("input", onFilterChange));
   // 조회 옵션 변경도 저장
   $("fromYear").addEventListener("change", saveState);
@@ -434,7 +433,7 @@ async function loadCorpIndex(){
 /* =====================================================
    상태 유지 (localStorage)
 ===================================================== */
-const FILTER_TEXT = ["fInc","fExc","fBirthFrom","fBirthTo","fStatus","fAsset"];
+const FILTER_TEXT = ["fInc","fExc","fBirthFrom","fBirthTo","fStatus"];
 const FILTER_CHK  = ["exOutside","exAuditor","onlyReg","onlyFte","onlySignal","onlyMove"];
 function saveState(){
   try{
@@ -584,7 +583,7 @@ $("delGroup").onclick = () => {
 $("exportGroup").onclick = () => {
   const blob = new Blob([JSON.stringify(getGroups(), null, 2)], {type:"application/json"});
   const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "exec_scope_groups.json"; a.click();
+  a.href = URL.createObjectURL(blob); a.download = "kis_head_hunters_groups.json"; a.click();
 };
 $("importGroup").onclick = () => $("importFile").click();
 $("importFile").onchange = e => {
@@ -685,8 +684,11 @@ async function runQuery(){
   const totalSteps = corps.length * (years.length + (inclQ ? 1 : 0));
   let done = 0;
   $("runBtn").disabled = true;
+  $("runBtn").textContent = "조회 중…";
   $("progress").classList.add("on");
-  const tick = label => { done++; $("barFill").style.width = (done/totalSteps*100)+"%"; $("progText").textContent = `${done}/${totalSteps} · ${label}`; };
+  $("barFill").style.width = "0%";
+  $("progText").textContent = `조회 준비 중… (대상 ${corps.length}개사)`;
+  const tick = label => { done++; $("barFill").style.width = (done/totalSteps*100)+"%"; $("progText").textContent = `진행 ${done}/${totalSteps} · ${label}`; };
 
   const merged = new Map(); // key: corp|name|birth
   let latestBasis = new Set();
@@ -731,6 +733,8 @@ async function runQuery(){
     basisText = `기준: ${[...latestBasis].sort().reverse().slice(0,4).join(", ")}${latestBasis.size>4?" 외":""} · 과거 ${fromY}년분까지 통합`;
     saveResult();
     sortKey = ""; expanded.clear(); render();
+    $("barFill").style.width = "100%";
+    $("progText").textContent = `완료 · 총 ${people.length}명`;
     toast(`조회 완료 — 총 ${people.length}명 (재직 ${people.filter(p=>p.status==="active").length} / 퇴임 추정 ${people.filter(p=>p.status==="left").length})`);
   }catch(e){
     if(e.message === "LIMIT") showBanner("DART 일일 호출 한도(20,000건)를 초과했습니다. 내일 다시 시도하거나, 이미 캐시된 범위로는 즉시 조회됩니다.", "warn", false);
@@ -738,7 +742,8 @@ async function runQuery(){
     else showBanner("조회 중 오류가 발생했습니다: " + e.message, "err", true);
   }finally{
     $("runBtn").disabled = false;
-    setTimeout(()=>$("progress").classList.remove("on"), 800);
+    $("runBtn").textContent = "조회 실행";
+    setTimeout(()=>$("progress").classList.remove("on"), 1500);
   }
 }
 
@@ -847,7 +852,6 @@ function filtered(){
   const inc = kwList($("fInc").value), exc = kwList($("fExc").value);
   const bf = +$("fBirthFrom").value || null, bt = +$("fBirthTo").value || null;
   const st = $("fStatus").value;
-  const minAsset = parseFloat($("fAsset").value) || null;
   const exOut = $("exOutside").checked, exAud = $("exAuditor").checked;
   const onlyReg = $("onlyReg").checked, onlyFte = $("onlyFte").checked;
   const onlySig = $("onlySignal").checked, onlyMv = $("onlyMove").checked;
@@ -866,10 +870,6 @@ function filtered(){
     if(onlyFte && !/상근/.test(p.fte_at)) return false;
     if(onlySig && !signalOf(p)) return false;
     if(onlyMv && !moveInfo(p).moved) return false;
-    if(minAsset){
-      const c = selected.get(p.corp_code);
-      if(!c || c.asset == null || c.asset < minAsset*1e12) return false;
-    }
     return true;
   });
 }
@@ -1033,7 +1033,7 @@ $("csvBtn").onclick = () => {
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `exec_scope_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `kis_head_hunters_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   toast(`${rows.length}명 CSV 다운로드`);
 };
