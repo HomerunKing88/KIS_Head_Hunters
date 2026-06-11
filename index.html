@@ -669,16 +669,19 @@ function cacheSet(corp, year, reprt, list){
   catch(e){ /* 용량 초과 시 캐시 생략 */ }
 }
 
-/* 임원현황 1건 조회 (캐시 우선) — 반환: list 또는 null(데이터 없음) */
+/* 임원현황 1건 조회 (캐시 우선) — 반환: list. 상태코드별로 구분 처리 */
 async function fetchExec(corp, year, reprt){
   const cached = cacheGet(corp, year, reprt);
   if(cached) return cached;
   const res = await dart("exctvSttus", { corp_code:corp, bsns_year:year, reprt_code:reprt });
-  if(res.status === "000"){ cacheSet(corp, year, reprt, res.list); return res.list; }
-  if(res.status === "013"){ cacheSet(corp, year, reprt, []); return []; }   // 자료 없음
-  if(res.status === "020") throw new Error("LIMIT");                          // 일일 한도 초과
-  if(res.status === "401") throw new Error("AUTH");
-  return [];
+  const st = res.status, msg = res.message || "";
+  if(st === "000"){ cacheSet(corp, year, reprt, res.list); return res.list; }
+  if(st === "013"){ cacheSet(corp, year, reprt, []); return []; }            // 자료 없음(정상)
+  if(st === "020" || st === "021") throw new Error("LIMIT");                  // 호출 한도 초과
+  if(st === "401") throw new Error("AUTH");                                   // 앱 비밀번호 인증 실패
+  if(st === "010" || st === "011" || st === "012") throw new Error("KEY:" + st + ":" + msg); // DART 키 오류
+  if(st === "100") return [];                                                 // 필드 부적절 — 빈 처리
+  throw new Error("DART:" + st + ":" + msg);                                  // 800 점검/900 등 일시 오류
 }
 
 /* =====================================================
@@ -726,7 +729,7 @@ async function runQuery(){
   }
 
   const total = tasks.length;
-  let errCount = 0;
+  let errCount = 0, dataCnt = 0, emptyCnt = 0;
   $("runBtn").disabled = true;
   $("runBtn").textContent = "조회 중…";
   $("progress").classList.add("on");
@@ -736,12 +739,14 @@ async function runQuery(){
   const worker = async (t) => {
     try{
       const list = await fetchExec(t.corp.c, t.year, t.reprt);
+      if(list && list.length) dataCnt++; else emptyCnt++;
       const slot = results.get(t.corp.c);
       if(t.kind === "q"){ if(list && list.length) slot.q.push({ yy:t.year, rp:t.reprt, list }); }
       else slot.a.set(t.year, list || []);
     }catch(e){
-      if(e.message === "LIMIT" || e.message === "AUTH") throw e; // 치명 오류는 전체 중단
-      errCount++;  // 일시 오류(타임아웃/네트워크)는 해당 건만 건너뜀
+      // 치명 오류(한도/인증/키)는 전체 중단, 그 외(타임아웃/점검)는 해당 건만 건너뜀
+      if(e.message === "LIMIT" || e.message === "AUTH" || e.message.startsWith("KEY")) throw e;
+      errCount++;
     }
   };
 
@@ -786,10 +791,17 @@ async function runQuery(){
     $("barFill").style.width = "100%";
     $("progText").textContent = `완료 · 총 ${people.length}명`;
     toast(`조회 완료 — 총 ${people.length}명 (재직 ${people.filter(p=>p.status==="active").length} / 퇴임 추정 ${people.filter(p=>p.status==="left").length})`);
-    if(errCount) showBanner(`${errCount}건의 보고서가 일시 오류로 누락됐습니다. 다시 조회하면 캐시 덕분에 빠르게 보완됩니다.`, "warn", true);
+    if(people.length === 0){
+      showBanner(`조회 결과 0명 · 데이터 보고서 ${dataCnt}건 / 자료없음 ${emptyCnt}건 / 오류 ${errCount}건. `
+        + (dataCnt === 0
+            ? "데이터 보고서가 0건이면 해당 사가 DART에 임원현황을 제출하지 않았거나(비제출 법인), 선택 연도 범위에 보고서가 없는 경우입니다. 시작 연도를 더 과거로 넓혀 보세요."
+            : "보고서엔 데이터가 있으나 필터로 모두 제외됐습니다. STEP3 필터(사외이사·감사 제외, 출생연도 등)를 완화해 보세요."), "warn", false);
+    }
+    else if(errCount) showBanner(`${errCount}건의 보고서가 일시 오류로 누락됐습니다. 다시 조회하면 캐시 덕분에 빠르게 보완됩니다.`, "warn", true);
   }catch(e){
     if(e.message === "LIMIT") showBanner("DART 일일 호출 한도(20,000건)를 초과했습니다. 내일 다시 시도하거나, 이미 캐시된 범위로는 즉시 조회됩니다.", "warn", false);
     else if(e.message === "AUTH") showBanner("인증이 만료되었습니다. 새로고침 후 다시 접속하세요.", "err", false);
+    else if(e.message.startsWith("KEY")) showBanner("DART 인증키 오류입니다 (" + e.message.slice(4) + "). Cloudflare 환경변수 DART_API_KEY 값을 확인하고(앞뒤 공백/오타) Retry deployment로 재배포하세요.", "err", false);
     else showBanner("조회 중 오류가 발생했습니다: " + e.message, "err", true);
   }finally{
     $("runBtn").disabled = false;
