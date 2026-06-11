@@ -121,7 +121,7 @@ main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-dir
 /* ---------- 결과 테이블 ---------- */
 .table-wrap{overflow:auto;max-height:72vh}
 table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:1120px}
-thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.82rem;letter-spacing:.02em;text-align:left;padding:10px 11px;white-space:nowrap;user-select:none;z-index:5}
+thead th{position:sticky;top:0;background:var(--ink);color:#fff;font-weight:600;font-size:.82rem;letter-spacing:.02em;text-align:center;padding:10px 11px;white-space:nowrap;user-select:none;z-index:5}
 thead th.sortable{cursor:pointer}
 thead th.sortable:hover{background:var(--ink2)}
 thead th:focus-visible{outline:2px solid var(--sky);outline-offset:-2px}
@@ -131,6 +131,7 @@ tbody td{padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top
 tbody tr.main:hover{background:var(--sky-soft)}
 tbody tr.main{cursor:pointer}
 td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+td.nm,td.corp{white-space:nowrap}
 .exp{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;color:var(--sub);font-size:.7rem;transition:transform .12s}
 tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
@@ -147,6 +148,7 @@ tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
 /* 컬럼 표시 토글 */
 table.hide-chrg .col-chrg{display:none}
 table.hide-career .col-career{display:none}
+table.hide-edu .col-edu{display:none}
 /* 상세 펼침 행 */
 tr.detail{display:none;background:#FBFCFE}
 tr.detail.open{display:table-row}
@@ -279,6 +281,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
       <div class="stats" id="resStats"></div>
       <div class="meta-ctl">
         <span class="col-toggles">열:
+          <label><input type="checkbox" id="colEdu" checked />학력</label>
           <label><input type="checkbox" id="colChrg" checked />담당업무</label>
           <label><input type="checkbox" id="colCareer" checked />주요경력</label>
         </span>
@@ -299,6 +302,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
           <th class="sortable" data-k="status" tabindex="0">상태<span class="arrow">↕</span></th>
           <th class="sortable" data-k="tenure_end_on" tabindex="0">임기만료<span class="arrow">↕</span></th>
           <th>등기/상근</th>
+          <th class="col-edu" title="주요경력에서 추출한 추정 학력">학력</th>
           <th class="col-chrg">담당업무</th>
           <th class="col-career">주요경력</th>
           <th>재직기간</th>
@@ -413,6 +417,7 @@ function init(){
   $("fromYear").addEventListener("change", saveState);
   $("inclQuarter").addEventListener("change", saveState);
   // 컬럼 표시 토글
+  $("colEdu").addEventListener("change", applyColToggles);
   $("colChrg").addEventListener("change", applyColToggles);
   $("colCareer").addEventListener("change", applyColToggles);
   applyColToggles();
@@ -939,6 +944,31 @@ function signalOf(p){
   return null;
 }
 
+/* 짧은 표기: 생년월 1963년 10월 → 63.10, 임기만료 2026년 12월 31일 → 26.12.31 */
+function pad2(n){ return String(n).padStart(2,"0"); }
+function fmtBirth(p){ const b = parseBirth(p); if(!b) return p.birth_ym||""; return b.m ? `${String(b.y).slice(2)}.${pad2(b.m)}` : String(b.y).slice(2); }
+function fmtTenureShort(p){
+  const m = (p.tenure_end_on||"").match(/(\d{4})\D+(\d{1,2})(?:\D+(\d{1,2}))?/);
+  if(!m) return p.tenure_end_on||"";
+  return `${m[1].slice(2)}.${pad2(m[2])}${m[3] ? "."+pad2(m[3]) : ""}`;
+}
+
+/* 학력(추정): DART에 별도 학력 필드가 없어 주요경력 앞부분(회사·직위 토큰 이전)을 추출 */
+const EDU_SUFFIX = /(증권|은행|보험|금융|운용|지주|그룹|화재|생명|캐피탈|카드|중공업|건설|제철|화학|통신|항공|해운|물산|공사|페이|뱅크|전자|반도체|자동차|제약|바이오|에너지|텔레콤|시스템|소프트|코퍼레이션|컴퍼니|파트너스|벤처스|투자|홀딩스)$/;
+const EDU_TITLE = /(대표이사|부사장|사장|부회장|회장|전무|상무보|상무|이사|부장|본부장|지점장|센터장|실장|팀장|감사|위원|행장|대표|파트너|고문|자문)/;
+const EDU_SIGNAL = /(대학|대[\s)]|대$|Univ|University|College|MBA|학사|석사|박사|학과|학부|전공|졸업|수료|고졸|고등학교|아카데미)/;
+function eduOf(p){
+  const s = (p.main_career||"").trim();
+  if(!s) return "";
+  const tokens = s.split(/\s+/);
+  const isBoundary = t => /\((?:前|現|전|현)\)/.test(t) || EDU_TITLE.test(t) || EDU_SUFFIX.test(t.replace(/\(.*?\)/g,""));
+  let i = 0;
+  while(i < tokens.length && !isBoundary(tokens[i])) i++;
+  let edu = tokens.slice(0, i).join(" ").trim();
+  if(edu && !EDU_SIGNAL.test(edu)) edu = "";  // 학력 신호 없으면 신뢰 낮음 → 비움
+  return edu;
+}
+
 function filtered(){
   const inc = kwList($("fInc").value), exc = kwList($("fExc").value);
   const bf = +$("fBirthFrom").value || null, bt = +$("fBirthTo").value || null;
@@ -978,6 +1008,7 @@ function sortNumVal(p, k){
 ===================================================== */
 function applyColToggles(){
   const t = $("resTable");
+  t.classList.toggle("hide-edu", !$("colEdu").checked);
   t.classList.toggle("hide-chrg", !$("colChrg").checked);
   t.classList.toggle("hide-career", !$("colCareer").checked);
 }
@@ -1040,16 +1071,17 @@ function render(){
     const others = mv.corps.filter(c => c.name !== p.corp_name);
     const main = `<tr class="main${isOpen?" open":""}" data-k="${esc(k)}">
       <td><span class="exp">▶</span></td>
-      <td><b>${esc(p.nm)}</b></td>
-      <td class="num">${esc(p.birth_ym)}</td>
+      <td class="nm"><b>${esc(p.nm)}</b></td>
+      <td class="num">${esc(fmtBirth(p))}</td>
       <td class="num">${age!=null ? age : ""}</td>
-      <td>${esc(p.corp_name)}</td>
+      <td class="corp">${esc(p.corp_name)}</td>
       <td>${esc(p.ofcps)}</td>
       <td>${p.status==="active" ? `<span class="badge b-active">재직</span>` : `<span class="badge b-left">퇴임 추정</span>`}
           ${sig ? `<span class="badge b-signal">${sig}</span>` : ""}
           ${mv.moved ? `<span class="badge b-move">이동 ${mv.corps.length}사</span>` : ""}</td>
-      <td class="num">${esc(p.tenure_end_on)}</td>
+      <td class="num">${esc(fmtTenureShort(p))}</td>
       <td>${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
+      <td class="career col-edu">${esc(eduOf(p))}</td>
       <td class="career col-chrg">${esc(p.chrg_job)}</td>
       <td class="career col-career">${esc(p.main_career)}</td>
       <td class="num">${esc(p.hffc_pd)}</td>
@@ -1058,8 +1090,9 @@ function render(){
         <a href="https://www.google.com/search?q=${q}&tbm=nws" target="_blank" rel="noopener">구글</a>
       </td>
     </tr>`;
-    const detail = `<tr class="detail${isOpen?" open":""}" data-detail="${esc(k)}"><td colspan="13">
+    const detail = `<tr class="detail${isOpen?" open":""}" data-detail="${esc(k)}"><td colspan="14">
       <div class="dgrid">
+        <div><div class="dk">학력(추정)</div><div class="dv">${esc(eduOf(p))||"—"}</div></div>
         <div><div class="dk">담당업무</div><div class="dv">${esc(p.chrg_job)||"—"}</div></div>
         <div><div class="dk">주요경력</div><div class="dv">${esc(p.main_career)||"—"}</div></div>
         <div><div class="dk">재직기간</div><div class="dv">${esc(p.hffc_pd)||"—"}</div></div>
@@ -1070,7 +1103,7 @@ function render(){
     </td></tr>`;
     return main + detail;
   }).join("");
-  if(rows.length > 800) body.innerHTML += `<tr><td colspan="13" class="empty">표시 한도 800명 초과 — 필터로 좁히거나 CSV로 전체를 내려받으세요.</td></tr>`;
+  if(rows.length > 800) body.innerHTML += `<tr><td colspan="14" class="empty">표시 한도 800명 초과 — 필터로 좁히거나 CSV로 전체를 내려받으세요.</td></tr>`;
 }
 
 /* 행 펼침 (이벤트 위임) */
@@ -1112,13 +1145,13 @@ document.querySelectorAll("thead th[data-k]").forEach(th => {
 $("csvBtn").onclick = () => {
   const rows = filtered();
   if(!rows.length) return toast("내보낼 데이터가 없습니다.");
-  const head = ["이름","생년월","나이","회사","직위","상태","시그널","이동사수","임기만료","등기여부","상근여부","담당업무","주요경력","재직기간","출처보고서"];
+  const head = ["이름","생년월","나이","회사","직위","상태","시그널","이동사수","임기만료","등기여부","상근여부","학력(추정)","담당업무","주요경력","재직기간","출처보고서"];
   const lines = [head.join(",")].concat(rows.map(p => {
     const mv = moveInfo(p); const age = ageOf(p);
     return [
       p.nm, p.birth_ym, age!=null?age:"", p.corp_name, p.ofcps,
       p.status==="active"?"재직":"퇴임 추정", signalOf(p)||"", mv.moved?mv.corps.length:"",
-      p.tenure_end_on, p.rgist_exctv_at, p.fte_at, p.chrg_job, p.main_career, p.hffc_pd, fmtReport(p.srcReport)
+      p.tenure_end_on, p.rgist_exctv_at, p.fte_at, eduOf(p), p.chrg_job, p.main_career, p.hffc_pd, fmtReport(p.srcReport)
     ].map(v => `"${String(v||"").replace(/"/g,'""')}"`).join(",");
   }));
   const blob = new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
