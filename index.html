@@ -43,7 +43,8 @@ header .right{margin-left:auto;font-size:.74rem;color:#8FB2DA}
 main{max-width:1280px;margin:0 auto;padding:22px 22px 60px;display:flex;flex-direction:column;gap:16px}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
-.card-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line)}
+.card-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card-head h2{white-space:nowrap}
 .card-head .step{font-size:.68rem;font-weight:800;letter-spacing:.14em;color:var(--sky)}
 .card-head h2{font-size:.98rem;font-weight:700;color:var(--ink)}
 .card-head .hint{font-size:.76rem;color:var(--sub);margin-left:auto;text-align:right}
@@ -134,8 +135,10 @@ tbody tr.main:hover{background:var(--sky-soft)}
 tbody tr.main{cursor:pointer}
 td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
 td.nm,td.corp{white-space:nowrap}
-.exp{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;color:var(--sub);font-size:.7rem;transition:transform .12s}
-tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
+.exp{display:inline-block;font-size:.74rem;font-weight:700;color:var(--sub);background:var(--gray-soft);border:1px solid var(--line);border-radius:6px;padding:2px 9px;white-space:nowrap}
+.exp::after{content:"상세"}
+tr.main.open .exp{color:var(--ink);background:var(--sky-soft);border-color:#C6DFF6}
+tr.main.open .exp::after{content:"접기"}
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .b-active{background:var(--green-soft);color:var(--green)}
 .b-left{background:var(--gray-soft);color:var(--gray)}
@@ -178,7 +181,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
 .toast.on{opacity:1}
 /* 모바일: 입력 폰트 16px 이상이어야 포커스 시 자동 확대(줌)가 일어나지 않음 */
 @media (max-width:768px){ input,select{font-size:16px} }
-@media (max-width:640px){html{font-size:14px} main{padding:14px 12px 50px} .card-body{padding:13px 13px}}
+@media (max-width:640px){html{font-size:14px} main{padding:14px 12px 50px} .card-body{padding:13px 13px} .card-head .hint{display:none}}
 </style>
 </head>
 <body>
@@ -246,7 +249,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
   <section class="card">
     <div class="card-head">
       <span class="step">STEP 2</span><h2>조회 범위 설정</h2>
-      <span class="hint">연도별 사업보고서를 순회 조회하여 전현직을 통합합니다</span>
+      <span class="hint">사업보고서를 순회해 전현직 통합</span>
     </div>
     <div class="card-body">
       <div class="row">
@@ -1112,7 +1115,7 @@ function render(){
     const q = encodeURIComponent(`${p.nm} ${shortCorp(p.corp_name)}`);
     const others = mv.corps.filter(c => c.name !== p.corp_name);
     const main = `<tr class="main${isOpen?" open":""}" data-k="${esc(k)}">
-      <td><span class="exp">▶</span></td>
+      <td><span class="exp"></span></td>
       <td class="nm"><b>${esc(p.nm)}</b></td>
       <td class="num col-birth">${esc(fmtBirth(p))}</td>
       <td class="num">${age!=null ? age : ""}</td>
