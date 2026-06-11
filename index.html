@@ -192,6 +192,8 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
   <div class="right">내부 검토용 · 외부 공유 금지</div>
 </header>
 
+<div id="previewNotice" style="display:none;background:var(--amber-soft);color:var(--amber);border-bottom:1px solid #F0CBA0;padding:9px 22px;font-size:.85rem;text-align:center"></div>
+
 <main>
 
   <!-- STEP 1: 대상 기업 -->
@@ -363,6 +365,18 @@ const toast = msg => { const t=$("toast"); t.textContent=msg; t.classList.add("o
 
 /* 상단 헤더 클릭 → 새로고침 */
 $("appHeader").onclick = () => location.reload();
+
+/* 임시(배포별) 주소 접속 경고 — localStorage(그룹·캐시·상태)는 도메인별이라 임시 주소에선 유지되지 않음 */
+(function(){
+  const h = location.hostname, parts = h.split(".");
+  if(h.endsWith("pages.dev") && parts.length > 3){
+    const canonical = parts.slice(-3).join(".");
+    const el = $("previewNotice");
+    el.innerHTML = `⚠️ <b>임시 배포 주소</b>입니다. 저장한 그룹·조회 캐시가 유지되는 <b>고정 주소</b>를 사용하세요 → `
+      + `<a href="https://${canonical}/" style="color:inherit;text-decoration:underline;font-weight:700">${canonical}</a>`;
+    el.style.display = "block";
+  }
+})();
 
 /* =====================================================
    비밀번호 게이트
