@@ -159,6 +159,10 @@ tr.main.open .exp::after{content:"접기"}
 .news a{display:inline-block;font-size:.74rem;font-weight:700;color:var(--ink);background:var(--sky-soft);border:1px solid #C6DFF6;border-radius:6px;padding:3px 8px;text-decoration:none;margin:1px 2px 1px 0}
 .news a:hover{background:var(--sky);color:#fff}
 /* 컬럼 표시 토글 */
+/* '한눈에 보기' 모드: 화면 폭과 무관하게 모든 칼럼 표시 + 가로 스크롤 */
+table.full{min-width:1180px}
+table.full .col-birth,table.full .col-tenure,table.full .col-reg,table.full .col-edu,table.full .col-chrg,table.full .col-career,table.full .col-hffc,table.full .col-news{display:table-cell}
+/* 사용자가 직접 끈 칼럼(체크 해제)은 full 모드에서도 계속 숨김 */
 table.hide-chrg .col-chrg{display:none}
 table.hide-career .col-career{display:none}
 table.hide-edu .col-edu{display:none}
@@ -308,6 +312,7 @@ footer{max-width:1280px;margin:0 auto;padding:0 22px 36px;font-size:.74rem;color
           <label><input type="checkbox" id="colCareer" checked />주요경력</label>
         </span>
         <button class="btn sm" id="clearRes">결과 비우기</button>
+        <button class="btn sm" id="viewToggle">한눈에 보기</button>
         <button class="btn sm" id="csvBtn">CSV 다운로드</button>
       </div>
       <span class="basis" id="resBasis" style="flex-basis:100%"></span>
@@ -458,6 +463,12 @@ function init(){
   $("colChrg").addEventListener("change", applyColToggles);
   $("colCareer").addEventListener("change", applyColToggles);
   applyColToggles();
+  // 한눈에 보기 / 간략하게 보기
+  $("viewToggle").onclick = () => {
+    localStorage.setItem("es_view", localStorage.getItem("es_view") === "full" ? "compact" : "full");
+    applyView();
+  };
+  applyView();
 }
 
 function onFilterChange(){ saveState(); render(); }
@@ -1056,6 +1067,12 @@ function applyColToggles(){
   t.classList.toggle("hide-edu", !$("colEdu").checked);
   t.classList.toggle("hide-chrg", !$("colChrg").checked);
   t.classList.toggle("hide-career", !$("colCareer").checked);
+}
+/* 한눈에 보기(모든 칼럼+가로 스크롤) / 간략하게 보기 전환 (선택 저장) */
+function applyView(){
+  const full = localStorage.getItem("es_view") === "full";
+  $("resTable").classList.toggle("full", full);
+  $("viewToggle").textContent = full ? "간략하게 보기" : "한눈에 보기";
 }
 
 function fmtReport(id){ if(!id) return ""; const [y,c] = String(id).split("-"); return `${y} ${REPORT_NAME[c]||c}`; }
