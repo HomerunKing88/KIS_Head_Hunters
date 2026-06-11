@@ -142,10 +142,8 @@ tr.main.open .exp{transform:rotate(90deg);color:var(--ink)}
 .b-move{background:var(--purple-soft);color:var(--purple)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media (prefers-reduced-motion:reduce){.b-signal::before{animation:none}}
-.career{max-width:300px;color:var(--sub);font-size:.86rem;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
-.edu{max-width:240px;font-size:.82rem;line-height:1.4;max-height:4.4em;overflow:hidden}
-.edu .ln:first-child{font-weight:600}
-.edu .ln+.ln{color:var(--sub);font-size:.78rem}
+.cell{max-width:300px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.86rem;color:var(--sub)}
+.col-edu .cell{max-width:220px;color:var(--text);font-weight:600}
 .news a{display:inline-block;font-size:.74rem;font-weight:700;color:var(--ink);background:var(--sky-soft);border:1px solid #C6DFF6;border-radius:6px;padding:3px 8px;text-decoration:none;margin:1px 2px 1px 0}
 .news a:hover{background:var(--sky);color:#fff}
 /* 컬럼 표시 토글 */
@@ -976,33 +974,27 @@ function fmtTenureShort(p){
 }
 
 /* 학력(추정): DART에 별도 학력 필드가 없어 주요경력 앞부분(회사·직위 토큰 이전)을 추출 */
-const EDU_SUFFIX = /(증권|은행|보험|금융|운용|지주|그룹|화재|생명|캐피탈|카드|중공업|건설|제철|화학|통신|항공|해운|물산|공사|페이|뱅크|전자|반도체|자동차|제약|바이오|에너지|텔레콤|시스템|소프트|코퍼레이션|컴퍼니|파트너스|벤처스|투자|홀딩스)$/;
+const EDU_SUFFIX = /(증권|은행|보험|금융|운용|지주|그룹|화재|생명|캐피탈|카드|중공업|건설|제철|화학|통신|항공|해운|물산|공사|페이|뱅크|전자|반도체|자동차|제약|바이오|에너지|텔레콤|시스템|소프트|코퍼레이션|컴퍼니|파트너스|벤처스|투자|홀딩스|회사|법인|본부|연구소|연구원|센터|팀|실|지점)$/;
 const EDU_TITLE = /(대표이사|부사장|사장|부회장|회장|전무|상무보|상무|이사|부장|본부장|지점장|센터장|실장|팀장|감사|위원|행장|대표|파트너|고문|자문)/;
-const EDU_SIGNAL = /(대학|대[\s)]|대$|Univ|University|College|MBA|학사|석사|박사|학과|학부|전공|졸업|수료|고졸|고등학교|아카데미)/;
-function eduOf(p){
-  const s = (p.main_career||"").trim();
-  if(!s) return "";
+// 학교 신호: 'OO대(학교/학원)', 과학기술원, Univ/College, 학위 등. 회사명의 '대'(현대·대신 등)는 (?![가-힣])로 배제
+const EDU_SCHOOL = /(대학교|대학원|과학기술원|기술원|[가-힣A-Za-z]대(?![가-힣])|Univ\.?|University|College|고등학교|고졸|아카데미|MBA|석사|박사|학사)/;
+
+/* 구분자(·) 없는 경력: 회사·직위 토큰 이전의 앞부분을 학력으로 추출 */
+function eduLeading(s){
   const tokens = s.split(/\s+/);
   const isBoundary = t => /\((?:前|現|전|현)\)/.test(t) || EDU_TITLE.test(t) || EDU_SUFFIX.test(t.replace(/\(.*?\)/g,""));
   let i = 0;
   while(i < tokens.length && !isBoundary(tokens[i])) i++;
-  let edu = tokens.slice(0, i).join(" ").trim();
-  if(edu && !EDU_SIGNAL.test(edu)) edu = "";  // 학력 신호 없으면 신뢰 낮음 → 비움
-  return edu;
+  const edu = tokens.slice(0, i).join(" ").trim();
+  return (edu && EDU_SCHOOL.test(edu)) ? edu : "";
 }
-/* 학력 문자열을 학교 단위로 분할 (국가표기·학교 토큰 기준) */
-function eduParts(p){
-  const edu = eduOf(p); if(!edu) return [];
-  const tokens = edu.split(/\s+/);
-  const isCountry = t => /^[美日中英獨佛濠加露伊西蘭印泰越亞]$/.test(t);
-  const isSchool = t => /(대학교|대학원|대$|Univ\.?|University|College|고등학교)/.test(t);
-  const parts = []; let cur = []; let hasSchool = false;
-  for(const t of tokens){
-    if((isCountry(t) || (isSchool(t) && hasSchool)) && cur.length){ parts.push(cur.join(" ")); cur = []; hasSchool = false; }
-    cur.push(t); if(isSchool(t)) hasSchool = true;
-  }
-  if(cur.length) parts.push(cur.join(" "));
-  return parts;
+/* 학력(추정): '·' 등 구분자가 있으면 학교 신호가 있는 항목만, 없으면 앞부분 추출 */
+function eduOf(p){
+  const raw = (p.main_career||"").trim();
+  if(!raw) return "";
+  const segs = raw.split(/\s*[·•∙・/\n;]\s*/).map(s => s.trim()).filter(Boolean);
+  if(segs.length > 1) return segs.filter(s => EDU_SCHOOL.test(s)).join(" · ");
+  return eduLeading(raw);
 }
 
 function filtered(){
@@ -1105,7 +1097,6 @@ function render(){
     const isOpen = expanded.has(k);
     const q = encodeURIComponent(`${p.nm} ${shortCorp(p.corp_name)}`);
     const others = mv.corps.filter(c => c.name !== p.corp_name);
-    const eduHtml = eduParts(p).map(e => `<div class="ln">${highlight(e)}</div>`).join("");
     const main = `<tr class="main${isOpen?" open":""}" data-k="${esc(k)}">
       <td><span class="exp">▶</span></td>
       <td class="nm"><b>${esc(p.nm)}</b></td>
@@ -1118,9 +1109,9 @@ function render(){
           ${mv.moved ? `<span class="badge b-move">이동 ${mv.corps.length}사</span>` : ""}</td>
       <td class="num">${esc(fmtTenureShort(p))}</td>
       <td>${esc(p.rgist_exctv_at)} / ${esc(p.fte_at)}</td>
-      <td class="edu col-edu">${eduHtml}</td>
-      <td class="career col-chrg">${highlight(p.chrg_job)}</td>
-      <td class="career col-career">${highlight(p.main_career)}</td>
+      <td class="col-edu"><div class="cell">${highlight(eduOf(p))}</div></td>
+      <td class="col-chrg"><div class="cell">${highlight(p.chrg_job)}</div></td>
+      <td class="col-career"><div class="cell">${highlight(p.main_career)}</div></td>
       <td class="num">${esc(p.hffc_pd)}</td>
       <td class="news">
         <a href="https://search.naver.com/search.naver?where=news&query=${q}" target="_blank" rel="noopener">네이버</a>
